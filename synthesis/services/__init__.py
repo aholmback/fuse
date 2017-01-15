@@ -1,3 +1,5 @@
+from synthesis import models
+
 class Service:
 
     listens_to = []
@@ -26,21 +28,15 @@ class Service:
 
         self.queues = {}
 
-
-
-    def get_inbox(self, channel):
-
-        def inbox(sender, **kw):
-            self.queues[channel].put((
-                sender,
-                kw['payload'],
-            ))
-
-        return inbox
+    def inbox(self, sender, channel, payload):
+        self.queues[channel].put((
+            sender,
+            payload,
+        ))
 
     def send_message(self, channel, payload):
         signal = self.message_dispatcher.signal(channel)
-        signal.send(self.name, payload=payload)
+        signal.send(self.name, payload=payload, channel=channel)
 
     def get_message(self, channel):
         if self.queues[channel].empty():
@@ -51,19 +47,14 @@ class Service:
 
         return payload
 
-    def prompt(self, prompt_key, config_key=None, overwrite=False, **parameters):
+    def prompt(self, identifier, overwrite=False, **parameters):
 
-        # Config identifier should be the same as prompt identifier unless otherwise specified
-        if config_key is None:
-            config_key = prompt_key
-
-        # If config identifier is not None av overwrite is False, skip prompting and return existing value
-        if self.config.get(config_key, None) is not None and not overwrite:
-            return self.config[config_key]
+        if self.config.get(identifier, None) is not None and not overwrite:
+            return self.config[identifier]
 
         # Fill in empty parameters from persistent storage if present
         try:
-            default_parameters = self.prompts.get(identifier=prompt_key)
+            default_parameters = self.prompts.get(identifier=identifier)
 
             for p in ['text', 'description', 'default', 'validators', 'options']:
                 parameters.setdefault(p, getattr(default_parameters, p))
@@ -78,18 +69,46 @@ class Service:
             parameters['validators'] = [getattr(self.validators, validator) for validator in parameters['validators'].split(',')]
 
         # Split options to list
-        if parameters.get('options', None) is not None:
+        if type(parameters.get('options', None)) is str:
             parameters['options'] = parameters['options'].split(',')
 
         # Store input value under designate key and return the value
-        self.config[config_key] = self.prompter(identifier=prompt_key, **parameters).input
-        return self.config[config_key]
+        self.config[identifier] = self.prompter(identifier=identifier, **parameters).input
+        return self.config[identifier]
+
+    def write(self):
+        result = models.Resource.select().where(models.Resource.service == self.name)
+
+        def in_version_span(sample, span):
+            if sample is None:
+                return True
+
+            sample = semantic_version.Version(sample)
+            span = [point if point is None else semantic_version.Version(point) for point in span]
+
+            return (span[0] is None or span[0] <= sample) and (span[1] is None or span[1] >= sample)
+
+        # Filter out all non-applicable versions and sort the remaining entries
+        # by key 'from_version' (priority will be correlated with key 'from_version').
+
+        resources = []
+        for row in result:
+            if not in_version_span(self.config.get('version', None), (row.from_version, row.to_version)):
+                continue
+            resources.append(row)
+
+        resources.sort(
+            key=lambda row: row.from_version,
+            reverse=True,
+        )
+
+        for resource in resources:
+            resource.write(self.config)
+
 
     def instantiate(self):
         pass
 
-    def configure(self):
+    def collect(self):
         pass
 
-    def write(self):
-        pass

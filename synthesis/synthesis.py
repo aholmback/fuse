@@ -4,7 +4,7 @@ import inflection
 import blinker
 import queue
 import jinja2
-from synthesis.utils import resources, prompts, validators
+from synthesis.utils import prompts, validators
 from synthesis.recipes import django_minimal
 from synthesis.models import Prompt, Resource
 
@@ -30,30 +30,22 @@ def run():
             validators=validators,
         )
 
-        # TODO: Find out why this works but the same 4 rows moved to Service.__init__ fails.
+        # TODO: Find out why this works but the same 3 rows moved to Service.__init__ fails.
         for channel in service.listens_to:
             service.queues[channel] = queue.Queue()
-            inbox = service.get_inbox(channel)
-            service.message_dispatcher.signal(channel).connect(inbox)
+            service.message_dispatcher.signal(channel).connect(service.inbox)
 
         service.instantiate()
         services.append(service)
 
     # Configure services
     for service in services:
-        service.configure()
+        service.collect()
 
-def norun():
-    # Instantiate all services
-
-    services.sort(key=lambda s: s.order)
-
-    # Configure all services
     for service in services:
-        service.configure()
+        pass
 
     # Write to disk
     for service in services:
-        for resource_name, resource in resources.load(service.name, service.config).items():
-            resource.write()
+        service.write()
 

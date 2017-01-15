@@ -8,25 +8,19 @@ class Django(Service):
         'current_working_directory',
     ]
 
-    def configure(self):
+    def collect(self):
         self.get_message('current_working_directory')
 
-        project_name = self.prompt(
-            'project_name',
-            config_key='project_name_readable',
-        )
+        self.config['project_phrase'] = self.prompt('project_name')
 
-        self.prompt(
+        self.config['project_name'] = self.prompt(
             'project_slug',
-            config_key='project_name',
-            default=re.sub('[^0-9a-zA-Z]+', '*', project_name.lower()),
+            default=re.sub('[^0-9a-zA-Z]+', '_', self.config['project_phrase'].lower()),
         )
 
-        django_version = self.prompt(
-            'semantic_version',
-            config_key='django_version'
-        )
+        django_version = self.prompt('semantic_version')
 
         django_version = semantic_version.Version(django_version)
         self.config['docs_version'] = "%s.%s" % (django_version.major, django_version.minor)
+        self.config['django_version'] = django_version
 

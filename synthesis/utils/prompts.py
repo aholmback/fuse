@@ -13,11 +13,13 @@ class DefaultPrompt(Prompt):
             default=None,
             validators=None,
             options=None,
+            pre_validation_hook=None,
     ):
 
         self.identifier = identifier
         self.text = identifier if text is None else text
         self.validators = validators
+        self.pre_validation_hook = pre_validation_hook
 
         if not default is None:
             self.text += " (default: %s)" % default
@@ -26,6 +28,10 @@ class DefaultPrompt(Prompt):
         super().__init__(text=self.text, default=default, options=options)
 
     def is_valid(self, value):
+
+        if self.pre_validation_hook is not None:
+            value = self.pre_validation_hook(value)
+
         return all(validator(value) for validator in self.validators)
 
     def get_validation_text(self):

@@ -1,61 +1,46 @@
+from synthesis.services import Service
 import os
-import blinker
-from synthesis.util.service import Service
-from synthesis.cli import validators
 
-class VirtualEnv(Service):
-    order = 2
+class Virtualenv(Service):
 
-    form = (
-        {
-            'identifier': 'directory',
-            'message': "Directory for virtualenv",
-            'help_text': None,
-            'default_value': 'env/',
-            'validators': [validators.text],
-            'retry': True,
-        },
-        {
-            'identifier': 'prompt',
-            'message': "Prompt for virtualenv",
-            'help_text': None,
-            'default_value': '(env) ',
-            'validators': [validators.text],
-            'retry': True,
-        },
-        {
-            'identifier': 'python3',
-            'message': "Python 3",
-            'help_text': None,
-            'default_value': '(env) ',
-            'validators': [validators.text],
-            'retry': True,
-        },
-    )
+    listens_to = [
+        'current_working_directory',
+    ]
 
-    form_sample_response = {
-        'directory': 'env/',
-        'prompt': '(env) ',
-        'python3': 'y',
-    }
+    def collect(self):
+        project_home = self.get_message('current_working_directory')
 
-    def register(self):
-        blinker.signal('current_working_directory').connect(self.set_cwd)
+        self.prompt(
+            'python_major_version',
+            text="Python Major Version",
+            options=['2','3'],
+        )
 
-    def configure(self, config, resources):
-        self.config = config
+        self.prompt(
+            'prompt',
+            text="Prompt for virtualenv",
+            default="(env) "
+        )
 
-    def dispatch(self):
-        if not self.config['directory'][0] == '/':
-            self.config['directory'] = os.path.join(self.cwd, self.config['directory'])
+        def make_local_absolut(directory):
+            absolut_dir = directory if directory[0] == '/' else os.path.join(project_home, directory)
+            return absolut_dir
 
-        if self.config['directory'].startswith(self.cwd):
-            local_dir = self.config['directory'].replace(self.cwd, '')
+        directory = self.prompt(
+            'directory',
+            text="Directory",
+            description="Local (to project home) or absolute directory",
+            default='env/',
+            pre_validation_hook=make_local_absolut,
+        )
 
-            blinker.signal('no_version_control').send(
-                self.name,
-                pattern=os.path.join(local_dir, '*'),
+        self.config['directory'] = directory = make_local_absolut(directory)
+
+        if directory.startswith(project_home):
+            local_dir = directory.replace(project_home, '')
+            self.send_message('no_version_control', payload=os.path.join(local_dir, '*'),
             )
+
 
     def write(self):
         try:
@@ -63,7 +48,8 @@ class VirtualEnv(Service):
         except FileExistsError:
             pass
 
-        os.system("virtualenv --quiet --prompt=\"%s\" %s" % (self.config['prompt'], self.config['directory']))
+        command = "/usr/local/bin/virtualenv -p python{python_major_version} --quiet --prompt=\"{prompt}\" {directory}"
+        command = command.format(**self.config)
 
-    def set_cwd(self, sender, directory):
-        self.cwd = directory
+        os.system(command)
+
