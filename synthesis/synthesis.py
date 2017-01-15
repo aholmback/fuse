@@ -1,50 +1,59 @@
 import os
-from jinja2 import Template
-from synthesis.cli.prompts import DefaultPrompt
-from synthesis.util.service import Service
-from synthesis.services_available import *
-
-use_sample_response = True
+import importlib
+import inflection
+import blinker
+import queue
+import jinja2
+from synthesis.utils import resources, prompts, validators
+from synthesis.recipes import django_minimal
+from synthesis.models import Prompt, Resource
 
 def run():
-    # Instantiate all services
-    services = [cls() for cls in Service.__subclasses__()]
+    recipe = django_minimal.recipe
+    services = []
 
-    # Register all services
+    # Instantiate services
+    for entry in recipe:
+        service_module_name, = entry.keys()
+        service_class_name = inflection.camelize(service_module_name)
+        service_module = importlib.import_module('synthesis.services.%s' % service_module_name)
+
+        service = getattr(service_module, service_class_name)(
+            name=service_module_name,
+            config=entry[service_module_name],
+            queuer=queue.Queue,
+            message_dispatcher=blinker,
+            template_engine=jinja2.Template,
+            prompter=prompts.DefaultPrompt,
+            prompts=Prompt,
+            resources=Resource,
+            validators=validators,
+        )
+
+        # TODO: Find out why this works but the same 4 rows moved to Service.__init__ fails.
+        for channel in service.listens_to:
+            service.queues[channel] = queue.Queue()
+            inbox = service.get_inbox(channel)
+            service.message_dispatcher.signal(channel).connect(inbox)
+
+        service.instantiate()
+        services.append(service)
+
+    # Configure services
     for service in services:
-        service.register()
+        service.configure()
+
+def norun():
+    # Instantiate all services
+
+    services.sort(key=lambda s: s.order)
 
     # Configure all services
     for service in services:
-        if use_sample_response:
-            service.configure(service.form_sample_response)
-        else:
-            config = {}
-            render_keys = ['message', 'default_value', 'help_text']
-
-            for entry in service.form:
-                if entry.get('disabled', False):
-                    continue
-
-                for render_key in render_keys:
-                    if not entry[render_key] is None:
-                        entry[render_key] = Template(entry[render_key]).render(**config)
-
-                user_input = DefaultPrompt(**entry).input
-                config[entry['identifier']] = user_input
-
-            service.configure(config)
-
-    # Dispatch all services
-    for service in services:
-        service.dispatch()
+        service.configure()
 
     # Write to disk
     for service in services:
-        service.write()
+        for resource_name, resource in resources.load(service.name, service.config).items():
+            resource.write()
 
-
-
-def configure_services(service_modules, context):
-    for service_module in service_modules:
-        service_module.configure(context)

@@ -1,4 +1,4 @@
-from . import synthesis
+from synthesis import synthesis
 
 def main():
     synthesis.run()

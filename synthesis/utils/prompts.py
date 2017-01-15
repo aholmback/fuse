@@ -1,5 +1,4 @@
 from cement.utils.shell import Prompt
-from .validators import not_none
 
 class DefaultPrompt(Prompt):
     class Meta:
@@ -9,31 +8,22 @@ class DefaultPrompt(Prompt):
     def __init__(
             self,
             identifier,
-            message,
-            help_text,
-            default_value,
-            validators,
-            retry,
-            post_process=None,
+            text=None,
+            description=None,
+            default=None,
+            validators=None,
+            options=None,
     ):
 
         self.identifier = identifier
-        self.validators = [not_none]
-        self.post_process = post_process
+        self.text = identifier if text is None else text
+        self.validators = validators
 
-        if validators:
-            self.validators += validators
+        if not default is None:
+            self.text += " (default: %s)" % default
+        self.text += ":"
 
-        if not default_value is None:
-            message += " (default: %s)" % default_value
-
-        message += ":"
-
-        super().__init__(text=message, default=default_value)
-
-    def process_input(self):
-        if self.post_process:
-            self.input = self.post_process(self.input)
+        super().__init__(text=self.text, default=default, options=options)
 
     def is_valid(self, value):
         return all(validator(value) for validator in self.validators)
@@ -49,7 +39,7 @@ class DefaultPrompt(Prompt):
         """
 
         attempt = 0
-        while not self.is_valid(self.input):
+        while self.input is None or not self.is_valid(self.input):
             if attempt >= int(self._meta.max_attempts):
                 if self._meta.max_attempts_exception is True:
                     raise FrameworkError("Maximum attempts exceeded getting "
@@ -60,7 +50,7 @@ class DefaultPrompt(Prompt):
             attempt += 1
             self._prompt()
 
-            if not self.is_valid(self.input):
+            if self.input is None or not self.is_valid(self.input):
                 if attempt == 1:
                     self._meta.text = self.get_validation_text() + '\n' + self._meta.text
                 continue
@@ -83,5 +73,4 @@ class DefaultPrompt(Prompt):
                             self.input = None
                             continue
 
-        self.process_input()
         return self.input

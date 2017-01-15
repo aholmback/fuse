@@ -19,7 +19,7 @@ def variable_name(value):
     """
     return value.isidentifier()
 
-def creatable_directory(value):
+def creatable_dir(value):
     """
     Directory must exist or be possible to create
     """
@@ -31,13 +31,13 @@ def creatable_directory(value):
     except:
         return False
 
-def writable_directory(value):
+def writable_dir(value):
     """
     Must be writeable directory
     """
     return os.access(value, os.W_OK)
 
-def empty_directory(value):
+def empty_dir(value):
     """
     Must be en empty directory
     """

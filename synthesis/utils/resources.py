@@ -12,14 +12,14 @@ def load(service, config):
 
     t = (service,)
 
-    result = c.execute('SELECT '
-                         'resource,'
-                         'from_version,'
-                         'to_version,'
-                         'target,'
-                         'content_source '
-                         'FROM resources '
-                         'WHERE service=?', t)
+    result = c.execute("""SELECT
+                         resource,
+                         from_version,
+                         to_version,
+                         target,
+                         content_source
+                         FROM resources 
+                         WHERE service=?""", t)
 
     def in_version_span(sample, span):
         if sample is None:
@@ -77,12 +77,12 @@ class Resource():
         try:
             content = urlopen(content_source).read()
         except HTTPError:
-            print(content_source)
             raise
 
         return Template(content.decode('utf-8')).render(**self.config)
 
-    def write(self, cwd):
+    def write(self):
+        cwd = self.config['current_working_directory']
         absolute_target = os.path.join(cwd, self.target)
 
         try:
