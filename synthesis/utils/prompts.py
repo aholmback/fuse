@@ -25,7 +25,7 @@ class DefaultPrompt(Prompt):
             self.text += " (default: %s)" % default
         self.text += ":"
 
-        super().__init__(text=self.text, default=default, options=options)
+        super().__init__(text=self.text, default=default, options=options, auto=False)
 
     def is_valid(self, value):
 

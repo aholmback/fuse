@@ -42,6 +42,7 @@ class Resource(BaseModel):
         with open(absolute_target, 'w') as fp:
             fp.write(content)
 
+
 class Prompt(BaseModel):
     identifier = CharField()
     text = CharField(null=True)
@@ -49,6 +50,7 @@ class Prompt(BaseModel):
     default = CharField(null=True)
     validators = CharField(null=True)
     options = CharField(null=True)
+
 
 def data():
     resources = (

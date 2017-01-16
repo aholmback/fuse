@@ -47,10 +47,8 @@ class Service:
 
         return payload
 
-    def prompt(self, identifier, overwrite=False, **parameters):
+    def prompt(self, identifier, **parameters):
 
-        if self.config.get(identifier, None) is not None and not overwrite:
-            return self.config[identifier]
 
         # Fill in empty parameters from persistent storage if present
         try:
@@ -68,13 +66,23 @@ class Service:
         else:
             parameters['validators'] = [getattr(self.validators, validator) for validator in parameters['validators'].split(',')]
 
-        # Split options to list
+        # Split options to list if it's a string
         if type(parameters.get('options', None)) is str:
             parameters['options'] = parameters['options'].split(',')
 
+
+        # Set the default value to current config (if present)
+        parameters['default'] = self.config.get(identifier, None) or parameters['default']
+
+        # Setup prompter and set its input value
+        prompter = self.prompter(identifier=identifier, **parameters)
+        prompter.input = self.config.get(identifier, None)
+
+        prompter.prompt()
+
         # Store input value under designate key and return the value
-        self.config[identifier] = self.prompter(identifier=identifier, **parameters).input
-        return self.config[identifier]
+        self.config[identifier] = prompter.input
+        return prompter.input
 
     def write(self):
         result = models.Resource.select().where(models.Resource.service == self.name)
@@ -110,5 +118,8 @@ class Service:
         pass
 
     def collect(self):
+        pass
+
+    def configure(self):
         pass
 
