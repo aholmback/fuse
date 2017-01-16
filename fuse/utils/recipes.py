@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import json
 import collections
@@ -22,12 +23,12 @@ def ls(filter_function=None):
     if filter_function is None:
         filter_function = lambda recipe: True
 
-    recipes = [parse_filename(f)[0] for f in os.listdir(os.path.join('synthesis/recipes')) if file_is_recipe(f)]
+    recipes = [parse_filename(f)[0] for f in os.listdir(os.path.join('fuse/recipes')) if file_is_recipe(f)]
 
     return filter(filter_function, recipes)
 
 def get(recipe_name):
-    with open('synthesis/recipes/%s.json' % recipe_name) as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'recipes', '%s.json') % recipe_name) as f:
         recipe = json.JSONDecoder(object_pairs_hook=collections.OrderedDict).decode(f.read())
 
     return recipe

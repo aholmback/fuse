@@ -1,12 +1,20 @@
-from peewee import *
+from __future__ import absolute_import, division, print_function, unicode_literals
+import six
+from peewee import Model, CharField, OperationalError
 from playhouse.sqlite_ext import SqliteExtDatabase
 import datetime
 import os
 from jinja2 import Template
-from urllib.request import urlopen
-from urllib.error import HTTPError
 
-db = SqliteExtDatabase('synthesis.db')
+if six.PY2:
+    from urllib2 import urlopen, HTTPError
+else:
+    from urllib.request import urlopen
+    from urllib.error import HTTPError
+
+
+
+db = SqliteExtDatabase(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fuse.db'))
 
 class BaseModel(Model):
     class Meta:
@@ -36,7 +44,7 @@ class Resource(BaseModel):
 
         try:
             os.makedirs(os.path.dirname(absolute_target))
-        except FileExistsError:
+        except OSError:
             pass
 
         with open(absolute_target, 'w') as fp:

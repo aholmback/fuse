@@ -1,4 +1,5 @@
-from synthesis import models
+from __future__ import absolute_import, division, print_function, unicode_literals
+from fuse import models
 
 class Service:
 

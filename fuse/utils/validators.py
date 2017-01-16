@@ -1,5 +1,8 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
 import semantic_version as semantic_version_module
+import six
 import os
+import re
 
 def not_none(value):
     """
@@ -17,7 +20,13 @@ def variable_name(value):
     """
     Value can only contain alphanumerical characters and underscore
     """
-    return value.isidentifier()
+
+    result = bool(re.match('^[a-zA-Z_$][a-zA-Z_$0-9]*$', value))
+
+    if six.PY3:
+        assert value.isidentifier() == result
+
+    return result
 
 def creatable_dir(value):
     """

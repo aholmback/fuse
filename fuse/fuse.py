@@ -1,33 +1,39 @@
+from __future__ import absolute_import, division, print_function # , unicode_literals ; unicode_literals messes up with Cement's type checking.
+import six
 import os
 import importlib
 import inflection
 import blinker
-import queue
 import jinja2
 import pkgutil
 from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
 
-from synthesis.utils import prompts, validators, recipes
-from synthesis.models import Prompt, Resource
+from fuse.utils import prompts, validators, recipes
+from fuse.models import Prompt, Resource
 
-defaults = init_defaults('synthesis')
-defaults['synthesis']['debug'] = False
+if six.PY2:
+    import Queue as queue
+else:
+    import queue
+
+defaults = init_defaults('fuse')
+defaults['fuse']['debug'] = False
 
 
 def run():
-    with Synthesis() as synthesis:
-        synthesis.run()
+    with Fuse() as fuse:
+        fuse.run()
 
 class BaseController(CementBaseController):
     class Meta:
         label = 'base'
-        description = "Synthesis - The template engine that ends all templates"
+        description = "Fuse - The template engine that ends all templates"
 
     @expose(hide=True)
     def default(self):
-        self.app.render({}, 'default_base.j2')
+        self.app.render({}, 'default_base.jinja2')
 
 class StartprojectController(CementBaseController):
     class Meta:
@@ -49,7 +55,7 @@ class StartprojectController(CementBaseController):
         # Instantiate services
         for service_module_name, config in recipe.items():
             service_class_name = inflection.camelize(service_module_name)
-            service_module = importlib.import_module('synthesis.services.%s' % service_module_name)
+            service_module = importlib.import_module('fuse.services.%s' % service_module_name)
 
             service = getattr(service_module, service_class_name)(
                 name=service_module_name,
@@ -96,7 +102,7 @@ class RecipeController(CementBaseController):
 
     @expose(hide=True)
     def default(self):
-        self.app.render({}, 'default_recipe.j2')
+        self.app.render({}, 'default_recipe.jinja2')
 
 
     @expose(help="Inspect recipe")
@@ -109,22 +115,22 @@ class RecipeController(CementBaseController):
             'recipe_name': recipe_name,
         }
 
-        self.app.render(context, 'recipe.j2')
+        self.app.render(context, 'recipe.jinja2')
 
     @expose(help="List available recipes", aliases=['list'], aliases_only=True)
     def show_all(self):
         context = {
             'recipes': recipes.ls(),
         }
-        self.app.render(context, 'recipes.j2')
+        self.app.render(context, 'recipes.jinja2')
 
-class Synthesis(CementApp):
+class Fuse(CementApp):
     class Meta:
-        label = 'synthesis'
+        label = 'fuse'
         config_defaults = defaults
         base_controller = 'base'
         handlers = [BaseController, RecipeController, StartprojectController]
         extensions = ['jinja2']
         output_handler = 'jinja2'
-        template_dirs = ['synthesis/templates']
-
+        template_module = 'fuse.templates'
+        template_dirs = [os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')]

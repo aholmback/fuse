@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
 from cement.utils.shell import Prompt
 
 class DefaultPrompt(Prompt):
@@ -25,7 +26,7 @@ class DefaultPrompt(Prompt):
             self.text += " (default: %s)" % default
         self.text += ":"
 
-        super().__init__(text=self.text, default=default, options=options, auto=False)
+        super(DefaultPrompt, self).__init__(text=self.text, default=default, options=options, auto=False)
 
     def is_valid(self, value):
 

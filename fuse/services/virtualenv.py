@@ -1,4 +1,5 @@
-from synthesis.services import Service
+from __future__ import absolute_import, division, print_function, unicode_literals
+from fuse.services import Service
 import os
 
 class Virtualenv(Service):
@@ -45,7 +46,7 @@ class Virtualenv(Service):
     def write(self):
         try:
             os.makedirs(self.config['directory'])
-        except FileExistsError:
+        except OSError:
             pass
 
         command = "/usr/local/bin/virtualenv -p python{python_major_version} --quiet --prompt=\"{prompt}\" {directory}"
