@@ -1,7 +1,0 @@
-
-Inspect recipe "{{recipe_name}}":
-    {% for service in recipe %}
-    Service "{{ service }}"
-        {% for parameter in recipe[service] %}{{ parameter }}: {{ recipe[service][parameter] }}
-        {% endfor %}{% endfor %}
-
