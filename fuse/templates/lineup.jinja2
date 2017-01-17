@@ -1,0 +1,7 @@
+
+Inspect lineup "{{lineup_name}}":
+    {% for service in lineup %}
+    Service "{{ service }}"
+        {% for parameter in lineup[service] %}{{ parameter }}: {{ lineup[service][parameter] }}
+        {% endfor %}{% endfor %}
+

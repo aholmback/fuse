@@ -21,7 +21,7 @@ class BaseModel(Model):
 
 class Resource(BaseModel):
     identifier = CharField()
-    service = CharField()
+    component = CharField()
     from_version = CharField(null=True)
     to_version = CharField(null=True)
     target = CharField()
@@ -63,7 +63,7 @@ def data():
     resources = (
         {
             'identifier': 'settings',
-            'service': 'django',
+            'component': 'django',
             'from_version': '1.10.1',
             'to_version': None,
             'target': '{project_name}/settings.py',
@@ -74,7 +74,7 @@ def data():
         },
         {
             'identifier': 'init',
-            'service': 'django',
+            'component': 'django',
             'from_version': '1.10.1',
             'to_version': None,
             'target': '{project_name}/__init__.py',
@@ -85,7 +85,7 @@ def data():
         },
         {
             'identifier': 'urls',
-            'service': 'django',
+            'component': 'django',
             'from_version': '1.10.1',
             'to_version': None,
             'target': '{project_name}/urls.py',
@@ -96,7 +96,7 @@ def data():
         },
         {
             'identifier': 'wsgi',
-            'service': 'django',
+            'component': 'django',
             'from_version': '1.10.1',
             'to_version': None,
             'target': '{project_name}/wsgi.py',
@@ -107,7 +107,7 @@ def data():
         },
         {
             'identifier': 'manage',
-            'service': 'django',
+            'component': 'django',
             'from_version': '1.10.1',
             'to_version': None,
             'target': 'manage.py',
@@ -117,7 +117,7 @@ def data():
         },
         {
             'identifier': 'requirements',
-            'service': 'pip',
+            'component': 'pip',
             'from_version': None,
             'to_version': None,
             'target': 'requirements.txt',

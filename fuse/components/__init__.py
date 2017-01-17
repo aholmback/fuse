@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse import models
 
-class Service:
+class Component:
 
     listens_to = []
 
@@ -86,7 +86,7 @@ class Service:
         return prompter.input
 
     def write(self):
-        result = models.Resource.select().where(models.Resource.service == self.name)
+        result = models.Resource.select().where(models.Resource.component == self.name)
 
         def in_version_span(sample, span):
             if sample is None:

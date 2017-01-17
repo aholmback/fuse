@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-from fuse.services import Service
+from fuse.components import Component
 import os
 
-class Home(Service):
+class Home(Component):
 
     def collect(self):
 

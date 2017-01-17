@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-from fuse.services import Service
+from fuse.components import Component
 import semantic_version
 import re
 
-class Django(Service):
+class Django(Component):
 
     listens_to = [
         'current_working_directory',

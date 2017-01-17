@@ -10,7 +10,7 @@ from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
 
-from fuse.utils import prompts, validators, recipes
+from fuse.utils import prompts, validators, lineups
 from fuse.models import Prompt, Resource
 
 if six.PY2:
@@ -38,27 +38,27 @@ class BaseController(CementBaseController):
 class StartprojectController(CementBaseController):
     class Meta:
         label = 'startproject'
-        description = "Synthesizes a boilerplate based on recipe"
+        description = "Synthesizes a boilerplate based on lineup"
         stacked_on = 'base'
         stacked_type = 'nested'
         arguments = [
-            ( ['-r', '--recipe'], dict(required=True, action='store', help='Name of the recipe') ),
+            ( ['-l', '--lineup'], dict(required=True, action='store', help='Name of the lineup') ),
         ]
 
     @expose(hide=True)
     def default(self):
-        recipe_name = self.app.pargs.recipe
-        recipe = recipes.get(recipe_name)
+        lineup_name = self.app.pargs.lineup
+        lineup = lineups.get(lineup_name)
 
-        services = []
+        components = []
 
-        # Instantiate services
-        for service_module_name, config in recipe.items():
-            service_class_name = inflection.camelize(service_module_name)
-            service_module = importlib.import_module('fuse.services.%s' % service_module_name)
+        # Instantiate components
+        for component_module_name, config in lineup.items():
+            component_class_name = inflection.camelize(component_module_name)
+            component_module = importlib.import_module('fuse.components.%s' % component_module_name)
 
-            service = getattr(service_module, service_class_name)(
-                name=service_module_name,
+            component = getattr(component_module, component_class_name)(
+                name=component_module_name,
                 config=config,
                 queuer=queue.Queue,
                 message_dispatcher=blinker,
@@ -70,59 +70,59 @@ class StartprojectController(CementBaseController):
             )
 
             # TODO: Find out why this works while the same 3 rows in Service.__init__ fails.
-            for channel in service.listens_to:
-                service.queues[channel] = queue.Queue()
-                service.message_dispatcher.signal(channel).connect(service.inbox)
+            for channel in component.listens_to:
+                component.queues[channel] = queue.Queue()
+                component.message_dispatcher.signal(channel).connect(component.inbox)
 
-            service.instantiate()
-            services.append(service)
+            component.instantiate()
+            components.append(component)
 
-        # Let services collect their stuff
-        for service in services:
-            service.collect()
+        # Let components collect their stuff
+        for component in components:
+            component.collect()
 
         # Trigger final configure
-        for service in services:
-            service.configure()
+        for component in components:
+            component.configure()
 
         # Write to disk
-        for service in services:
-            service.write()
+        for component in components:
+            component.write()
 
 
 class RecipeController(CementBaseController):
     class Meta:
-        label = 'recipe'
-        description = "List and inspect recipes"
+        label = 'lineup'
+        description = "List and inspect lineups"
         stacked_on = 'base'
         stacked_type = 'nested'
         arguments = [
-            ( ['-r', '--recipe'], dict(action='store', help='Name of the recipe') ),
+            ( ['-l', '--lineup'], dict(action='store', help='Name of the lineup') ),
         ]
 
     @expose(hide=True)
     def default(self):
-        self.app.render({}, 'default_recipe.jinja2')
+        self.app.render({}, 'default_lineup.jinja2')
 
 
-    @expose(help="Inspect recipe")
+    @expose(help="Inspect lineup")
     def inspect(self):
-        recipe_name = self.app.pargs.recipe
-        recipe = recipes.get(recipe_name)
+        lineup_name = self.app.pargs.lineup
+        lineup = lineups.get(lineup_name)
 
         context = {
-            'recipe': recipe,
-            'recipe_name': recipe_name,
+            'lineup': lineup,
+            'lineup_name': lineup_name,
         }
 
-        self.app.render(context, 'recipe.jinja2')
+        self.app.render(context, 'lineup.jinja2')
 
-    @expose(help="List available recipes", aliases=['list'], aliases_only=True)
+    @expose(help="List available lineups", aliases=['list'], aliases_only=True)
     def show_all(self):
         context = {
-            'recipes': recipes.ls(),
+            'lineups': lineups.ls(),
         }
-        self.app.render(context, 'recipes.jinja2')
+        self.app.render(context, 'lineups.jinja2')
 
 class Fuse(CementApp):
     class Meta:
