@@ -4,8 +4,8 @@ import os
 
 class Home(Component):
 
-    def setup(self):
-        self.post_pin('home_directory', None)
+    def setup(self, pinboard):
+        pinboard.post_pin('home_directory', None)
 
     def home_directory(self, _):
         project_home = self.prompt(

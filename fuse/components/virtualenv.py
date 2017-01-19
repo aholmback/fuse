@@ -4,10 +4,10 @@ import os
 
 class Virtualenv(Component):
 
-    def setup(self):
-        self.post_pin('virtualenv_python_major_version', None)
-        self.post_pin('virtualenv_prompt', None)
-        self.post_pin('virtualenv_directory', None)
+    def setup(self, pinboard):
+        pinboard.post_pin('virtualenv_python_major_version', None)
+        pinboard.post_pin('virtualenv_prompt', None)
+        pinboard.post_pin('virtualenv_directory', None)
 
     def current_working_directory(self, project_home):
         self.config['project_home'] = project_home

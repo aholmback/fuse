@@ -1,3 +1,0 @@
-recursive-include fuse/recipes *
-recursive-include fuse/templates *
-include fuse/fuse.db

@@ -5,10 +5,10 @@ import re
 
 class Django(Component):
 
-    def setup(self):
-        self.post_pin('django_project_name', None)
-        self.post_pin('django_project_slug', None)
-        self.post_pin('django_version', None)
+    def setup(self, pinboard):
+        pinboard.post_pin('django_project_name', None)
+        pinboard.post_pin('django_project_slug', None)
+        pinboard.post_pin('django_version', None)
 
     def current_working_directory(self, project_home):
         self.config['project_home'] = project_home

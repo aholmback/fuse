@@ -76,15 +76,14 @@ class StartprojectController(CementBaseController):
                 prompts=models.Prompt,
                 resources=models.Resource,
                 validators=validators,
-                pinboard=pinboard,
             )
 
-            component.setup()
+            component.setup(pinboard)
             components.append(component)
 
         # Configure as long as components are processing pins
         while True:
-            pins_processed = sum(component.configure() for component in components)
+            pins_processed = sum(component.configure(pinboard) for component in components)
 
             if pins_processed == 0:
                 break

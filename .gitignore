@@ -6,6 +6,7 @@ __pycache__
 env/*
 .tox/*
 
-fuse.egg-info/*
+*.egg-info
 dist/*
 build/*
+MANIFEST.in

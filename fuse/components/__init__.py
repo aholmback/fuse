@@ -8,7 +8,6 @@ class Component(object):
                  prompter,
                  prompts,
                  resources,
-                 pinboard,
                  validators,
                  prefill=None,
                  ):
@@ -27,17 +26,14 @@ class Component(object):
         if self.prefill is None:
             self.prefill = {}
 
-    def setup(self):
+    def setup(self, pinboard):
         pass
 
-    def post_pin(self, label, message):
-        self.pinboard.post(label, message)
-
-    def configure(self):
+    def configure(self, pinboard):
         """
         Process pins from pinboard and return number of pins processed
         """
-        pins = self.pinboard.get(exclude=self.processed_pins)
+        pins = pinboard.get(exclude=self.processed_pins)
         processed_pins = []
 
         for pin_id, pin in pins:
@@ -48,7 +44,7 @@ class Component(object):
             try:
                 getattr(self, pin.label)(pin.message)
                 processed_pins.append(pin_id)
-            except self.pinboard.PinNotProcessed:
+            except pinboard.PinNotProcessed:
                 pass
             
         self.processed_pins += processed_pins

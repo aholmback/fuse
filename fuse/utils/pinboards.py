@@ -5,9 +5,9 @@ class PinNotProcessed(Exception):
 class Pinboard(object):
 
     def __init__(self):
+        self.pin_id = None
         self.pins = {}
         self.PinNotProcessed = PinNotProcessed
-        self.pin_id = None
 
     def get_pin_id(self):
         if self.pin_id is None:
