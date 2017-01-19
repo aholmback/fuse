@@ -12,7 +12,6 @@ setup(
         ],
     },
     install_requires = [
-        'blinker==1.4',
         'cement==2.10.2',
         'Jinja2==2.9.4',
         'semantic_version==2.6.0',

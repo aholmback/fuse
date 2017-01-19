@@ -1,55 +1,50 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse import models
 
-class Component:
-
-    listens_to = []
+class Component(object):
 
     def __init__(self,
                  name,
-                 config,
-                 queuer,
-                 message_dispatcher,
+                 prefill,
                  template_engine,
                  prompter,
                  prompts,
                  resources,
+                 pinboard,
                  validators,
                  ):
 
         self.name = name
-        self.config = config
-        self.queuer = queuer
-        self.message_dispatcher = message_dispatcher
+        self.prefill = prefill
         self.template_engine = template_engine
         self.prompter = prompter
         self.prompts = prompts
         self.resources = resources
         self.validators = validators
+        self.pinboard = pinboard
 
-        self.queues = {}
+        self.config = {}
 
-    def inbox(self, sender, channel, payload):
-        self.queues[channel].put((
-            sender,
-            payload,
-        ))
+        self.next_pin = 0
 
-    def send_message(self, channel, payload):
-        signal = self.message_dispatcher.signal(channel)
-        signal.send(self.name, payload=payload, channel=channel)
+    def instantiate(self):
+        pass
 
-    def get_message(self, channel):
-        if self.queues[channel].empty():
-            raise IndexError("No messages in channel %s" % channel)
+    def post_pin(self, label, message):
+        self.pinboard.post(label, message)
 
-        sender, payload = self.queues[channel].get()
-        self.config[channel] = payload
+    def repost_pin(self, index):
+        self.pinboard.repost(index)
 
-        return payload
+    def configure(self):
+        pins = self.pinboard.get(self.next_pin)
+
+        for pin in pins:
+            self.next_pin += 1
+            if hasattr(self, pin.label):
+                getattr(self, pin.label)(pin.message)
 
     def prompt(self, identifier, **parameters):
-
 
         # Fill in empty parameters from persistent storage if present
         try:
@@ -72,17 +67,17 @@ class Component:
             parameters['options'] = parameters['options'].split(',')
 
 
-        # Set the default value to current config (if present)
-        parameters['default'] = self.config.get(identifier, None) or parameters['default']
+        # Set the default value to prefill (if present)
+        if parameters.get('prefill', None) is not None:
+            parameters['default'] = parameters['prefill']
 
         # Setup prompter and set its input value
         prompter = self.prompter(identifier=identifier, **parameters)
-        prompter.input = self.config.get(identifier, None)
+        prompter.input = parameters.get('prefill', None)
 
         prompter.prompt()
 
         # Store input value under designate key and return the value
-        self.config[identifier] = prompter.input
         return prompter.input
 
     def write(self):
@@ -114,13 +109,4 @@ class Component:
         for resource in resources:
             resource.write(self.config)
 
-
-    def instantiate(self):
-        pass
-
-    def collect(self):
-        pass
-
-    def configure(self):
-        pass
 

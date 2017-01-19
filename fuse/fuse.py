@@ -3,20 +3,15 @@ import six
 import os
 import importlib
 import inflection
-import blinker
 import jinja2
 import pkgutil
 from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
 
-from fuse.utils import prompts, validators, lineups
-from fuse.models import Prompt, Resource
+from fuse.utils import prompts, validators, pinboards
+from fuse import lineups, models
 
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
 
 defaults = init_defaults('fuse')
 defaults['fuse']['debug'] = False
@@ -35,6 +30,21 @@ class BaseController(CementBaseController):
     def default(self):
         self.app.render({}, 'default_base.jinja2')
 
+class ResetController(CementBaseController):
+    class Meta:
+        label = 'reset'
+        description = 'Resets database'
+        stacked_on = 'base'
+        stacked_type = 'nested'
+
+    @expose(hide=True)
+    def default(self):
+        try:
+            models.db.create_tables([models.Prompt, models.Resource])
+            models.data()
+        except models.OperationalError:
+            print("Didn't create or do anything cus stuff already exist")
+
 class StartprojectController(CementBaseController):
     class Meta:
         label = 'startproject'
@@ -49,41 +59,39 @@ class StartprojectController(CementBaseController):
     def default(self):
         lineup_name = self.app.pargs.lineup
         lineup = lineups.get(lineup_name)
+        
+        pinboard = pinboards.Pinboard()
 
         components = []
 
         # Instantiate components
-        for component_module_name, config in lineup.items():
+        for component_module_name, prefill in lineup.items():
             component_class_name = inflection.camelize(component_module_name)
             component_module = importlib.import_module('fuse.components.%s' % component_module_name)
 
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
-                config=config,
-                queuer=queue.Queue,
-                message_dispatcher=blinker,
+                prefill=prefill,
                 template_engine=jinja2.Template,
                 prompter=prompts.DefaultPrompt,
-                prompts=Prompt,
-                resources=Resource,
+                prompts=models.Prompt,
+                resources=models.Resource,
                 validators=validators,
+                pinboard=pinboard,
             )
-
-            # TODO: Find out why this works while the same 3 rows in Service.__init__ fails.
-            for channel in component.listens_to:
-                component.queues[channel] = queue.Queue()
-                component.message_dispatcher.signal(channel).connect(component.inbox)
 
             component.instantiate()
             components.append(component)
 
-        # Let components collect their stuff
-        for component in components:
-            component.collect()
+        # Configure as long as new pins are added to pin board
+        while True:
+            number_of_pins = len(pinboard.pins)
 
-        # Trigger final configure
-        for component in components:
-            component.configure()
+            for component in components:
+                component.configure()
+
+            if number_of_pins == len(pinboard.pins):
+                break
 
         # Write to disk
         for component in components:
@@ -129,7 +137,7 @@ class Fuse(CementApp):
         label = 'fuse'
         config_defaults = defaults
         base_controller = 'base'
-        handlers = [BaseController, RecipeController, StartprojectController]
+        handlers = [BaseController, RecipeController, StartprojectController, ResetController]
         extensions = ['jinja2']
         output_handler = 'jinja2'
         template_module = 'fuse.templates'

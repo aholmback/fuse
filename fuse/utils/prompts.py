@@ -15,6 +15,7 @@ class DefaultPrompt(Prompt):
             validators=None,
             options=None,
             pre_validation_hook=None,
+            prefill=None,
     ):
 
         self.identifier = identifier
@@ -29,10 +30,6 @@ class DefaultPrompt(Prompt):
         super(DefaultPrompt, self).__init__(text=self.text, default=default, options=options, auto=False)
 
     def is_valid(self, value):
-
-        if self.pre_validation_hook is not None:
-            value = self.pre_validation_hook(value)
-
         return all(validator(value) for validator in self.validators)
 
     def get_validation_text(self):
@@ -46,6 +43,10 @@ class DefaultPrompt(Prompt):
         """
 
         attempt = 0
+
+        if self.input is not None and self.pre_validation_hook:
+            self.input = self.pre_validation_hook(self.input)
+
         while self.input is None or not self.is_valid(self.input):
             if attempt >= int(self._meta.max_attempts):
                 if self._meta.max_attempts_exception is True:
@@ -56,6 +57,9 @@ class DefaultPrompt(Prompt):
 
             attempt += 1
             self._prompt()
+
+            if self.input is not None and self.pre_validation_hook:
+                self.input = self.pre_validation_hook(self.input)
 
             if self.input is None or not self.is_valid(self.input):
                 if attempt == 1:

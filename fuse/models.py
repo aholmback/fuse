@@ -37,7 +37,7 @@ class Resource(BaseModel):
 
         target = self.target.format(**context)
         absolute_target = os.path.join(
-            context['current_working_directory'],
+            context['project_home'],
             target
         )
 
@@ -165,11 +165,4 @@ def data():
 
     for prompt in prompts:
         Prompt.create(**prompt)
-
-if __name__ == '__main__':
-    try:
-        db.create_tables([Prompt, Resource])
-        data()
-    except OperationalError:
-        print("Didn't create or do anything cus stuff already exist")
 

@@ -4,8 +4,10 @@ import os
 
 class Home(Component):
 
-    def collect(self):
+    def instantiate(self):
+        self.post_pin('home_directory', None)
 
+    def home_directory(self, _):
         directory = self.prompt(
             'directory',
             text="Project Home",
@@ -13,7 +15,5 @@ class Home(Component):
             pre_validation_hook=os.path.expanduser
         )
 
-        self.config['directory'] = directory = os.path.expanduser(directory)
-
-        self.send_message('current_working_directory', payload=directory)
+        self.post_pin('current_working_directory', directory)
 

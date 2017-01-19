@@ -4,27 +4,33 @@ import os
 
 class Virtualenv(Component):
 
-    listens_to = [
-        'current_working_directory',
-    ]
+    def instantiate(self):
+        self.post_pin('virtualenv_python_major_version', None)
+        self.post_pin('virtualenv_prompt', None)
+        self.post_pin('virtualenv_directory', None)
 
-    def collect(self):
-        project_home = self.get_message('current_working_directory')
+    def current_working_directory(self, project_home):
+        self.project_home = project_home
 
+    def virtualenv_python_major_version(self, _):
         self.prompt(
             'python_major_version',
             text="Python Major Version",
             options=['2','3'],
+            prefill=self.prefill['python_major_version']
         )
 
+    def virtualenv_prompt(self, _):
         self.prompt(
             'prompt',
             text="Prompt for virtualenv",
             default="(env) "
         )
 
+    def virtualenv_directory(self, _):
+
         def make_local_absolut(directory):
-            absolut_dir = directory if directory[0] == '/' else os.path.join(project_home, directory)
+            absolut_dir = directory if directory[0] == '/' else os.path.join(self.project_home, directory)
             return absolut_dir
 
         directory = self.prompt(
@@ -37,8 +43,8 @@ class Virtualenv(Component):
 
         self.config['directory'] = directory = make_local_absolut(directory)
 
-        if directory.startswith(project_home):
-            local_dir = directory.replace(project_home, '')
+        if directory.startswith(self.project_home):
+            local_dir = directory.replace(self.project_home, '')
             self.send_message('no_version_control', payload=os.path.join(local_dir, '*'),
             )
 
