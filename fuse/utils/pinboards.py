@@ -5,15 +5,30 @@ class PinNotProcessed(Exception):
 class Pinboard(object):
 
     def __init__(self):
-        self.pins = []
+        self.pins = {}
         self.PinNotProcessed = PinNotProcessed
+        self.pin_id = None
+
+    def get_pin_id(self):
+        if self.pin_id is None:
+            self.pin_id = 1
+            return self.pin_id
+
+        self.pin_id += 1
+        return self.pin_id
+
+
 
     def post(self, label, message):
         pin = Pin(label, message)
-        self.pins.append(pin)
+        pin_id = self.get_pin_id()
+
+        self.pins[pin_id] = pin
+
+        return pin_id
 
     def get(self, exclude):
-        return [pin for i, pin in enumerate(self.pins) if i not in exclude]
+        return [(pin_id, self.pins[pin_id]) for pin_id in self.pins if pin_id not in exclude]
 
 
 class Pin(object):

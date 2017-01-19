@@ -24,6 +24,9 @@ class Component(object):
         self.config = {}
         self.processed_pins = []
 
+        if self.prefill is None:
+            self.prefill = {}
+
     def setup(self):
         pass
 
@@ -37,7 +40,7 @@ class Component(object):
         pins = self.pinboard.get(exclude=self.processed_pins)
         processed_pins = []
 
-        for pin_id, pin in enumerate(pins):
+        for pin_id, pin in pins:
             if not hasattr(self, pin.label):
                 processed_pins.append(pin_id)
                 continue
@@ -48,7 +51,6 @@ class Component(object):
             except self.pinboard.PinNotProcessed:
                 pass
             
-
         self.processed_pins += processed_pins
 
         return len(processed_pins)

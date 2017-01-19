@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from cement.utils.shell import Prompt
 
-class DefaultPrompt(Prompt):
+class BasePrompt(Prompt):
     class Meta:
         max_attempts = 99
         auto = True
@@ -27,7 +27,7 @@ class DefaultPrompt(Prompt):
             self.text += " (default: %s)" % default
         self.text += ":"
 
-        super(DefaultPrompt, self).__init__(text=self.text, default=default, options=options, auto=False)
+        super(BasePrompt, self).__init__(text=self.text, default=default, options=options, auto=False)
 
     def is_valid(self, value):
         return all(validator(value) for validator in self.validators)
@@ -85,3 +85,10 @@ class DefaultPrompt(Prompt):
                             continue
 
         return self.input
+
+class DefaultPrompt(BasePrompt):
+    pass
+
+class NullPrompt(BasePrompt):
+    def prompt(self):
+        self.input = ''

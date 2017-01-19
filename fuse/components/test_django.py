@@ -8,7 +8,7 @@ def instantiated():
 
     return Django(
         name='django',
-        prompter=prompts.DefaultPrompt,
+        prompter=prompts.NullPrompt,
         prompts=models.Prompt,
         resources=models.Resource,
         validators=validators,
@@ -20,10 +20,14 @@ def post_setup(instantiated):
     instantiated.setup()
     return instantiated
 
+@pytest.fixture
+def post_configure(post_setup):
+    post_setup.configure()
+    return post_setup
+
 def test_init(instantiated):
     assert instantiated.name == 'django'
 
 def test_setup(post_setup):
     pins = post_setup.pinboard.get(exclude=[])
     assert len(pins) == 3
-
