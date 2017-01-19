@@ -1,7 +1,10 @@
-env/*
 __pycache__
+.cache
 *.swp
 *.pyc
+
+env/*
+.tox/*
 
 fuse.egg-info/*
 dist/*

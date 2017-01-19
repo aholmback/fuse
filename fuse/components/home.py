@@ -4,16 +4,17 @@ import os
 
 class Home(Component):
 
-    def instantiate(self):
+    def setup(self):
         self.post_pin('home_directory', None)
 
     def home_directory(self, _):
-        directory = self.prompt(
+        project_home = self.prompt(
             'directory',
             text="Project Home",
             default=os.getcwd(),
+            prefill=self.prefill.get('directory', None),
             pre_validation_hook=os.path.expanduser
         )
 
-        self.post_pin('current_working_directory', directory)
+        self.post_pin('current_working_directory', project_home)
 

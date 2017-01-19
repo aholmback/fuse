@@ -24,7 +24,7 @@ def run():
 class BaseController(CementBaseController):
     class Meta:
         label = 'base'
-        description = "Fuse - The template engine that ends all templates"
+        description = "Fuse - Generate configurations"
 
     @expose(hide=True)
     def default(self):
@@ -72,7 +72,6 @@ class StartprojectController(CementBaseController):
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
                 prefill=prefill,
-                template_engine=jinja2.Template,
                 prompter=prompts.DefaultPrompt,
                 prompts=models.Prompt,
                 resources=models.Resource,
@@ -80,18 +79,16 @@ class StartprojectController(CementBaseController):
                 pinboard=pinboard,
             )
 
-            component.instantiate()
+            component.setup()
             components.append(component)
 
-        # Configure as long as new pins are added to pin board
+        # Configure as long as components are processing pins
         while True:
-            number_of_pins = len(pinboard.pins)
+            pins_processed = sum(component.configure() for component in components)
 
-            for component in components:
-                component.configure()
-
-            if number_of_pins == len(pinboard.pins):
+            if pins_processed == 0:
                 break
+
 
         # Write to disk
         for component in components:

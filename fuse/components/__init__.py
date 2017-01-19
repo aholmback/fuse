@@ -5,18 +5,16 @@ class Component(object):
 
     def __init__(self,
                  name,
-                 prefill,
-                 template_engine,
                  prompter,
                  prompts,
                  resources,
                  pinboard,
                  validators,
+                 prefill=None,
                  ):
 
         self.name = name
         self.prefill = prefill
-        self.template_engine = template_engine
         self.prompter = prompter
         self.prompts = prompts
         self.resources = resources
@@ -24,28 +22,39 @@ class Component(object):
         self.pinboard = pinboard
 
         self.config = {}
+        self.processed_pins = []
 
-        self.next_pin = 0
-
-    def instantiate(self):
+    def setup(self):
         pass
 
     def post_pin(self, label, message):
         self.pinboard.post(label, message)
 
-    def repost_pin(self, index):
-        self.pinboard.repost(index)
-
     def configure(self):
-        pins = self.pinboard.get(self.next_pin)
+        """
+        Process pins from pinboard and return number of pins processed
+        """
+        pins = self.pinboard.get(exclude=self.processed_pins)
+        processed_pins = []
 
-        for pin in pins:
-            self.next_pin += 1
-            if hasattr(self, pin.label):
+        for pin_id, pin in enumerate(pins):
+            if not hasattr(self, pin.label):
+                processed_pins.append(pin_id)
+                continue
+
+            try:
                 getattr(self, pin.label)(pin.message)
+                processed_pins.append(pin_id)
+            except self.pinboard.PinNotProcessed:
+                pass
+            
+
+        self.processed_pins += processed_pins
+
+        return len(processed_pins)
+
 
     def prompt(self, identifier, **parameters):
-
         # Fill in empty parameters from persistent storage if present
         try:
             default_parameters = self.prompts.get(identifier=identifier)
