@@ -6,7 +6,7 @@ def pinboard():
     return pinboards.Pinboard()
 
 def test_post_and_get_pin(pinboard):
-    pinboard.post('test_pin', 'test_message')
+    pinboard.post_pin('test_pin', 'test_message')
     (pin_id, pin), = pinboard.get(exclude=[])
 
     assert pin.label == 'test_pin'
@@ -21,7 +21,7 @@ def test_exclude_pins(pinboard):
         ('test_pin_e', 'test_message_e'),
     ]
 
-    exclude = [pinboard.post(label, message) for label, message in test_data]
+    exclude = [pinboard.post_pin(label, message) for label, message in test_data]
 
     (pin_id_d, pin_d), (pin_id_e, pin_e) = pinboard.get(exclude=exclude[:3])
 

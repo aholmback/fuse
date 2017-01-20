@@ -1,9 +1,14 @@
 import pytest
 
 @pytest.fixture
+def pinboard():
+    from fuse.utils import pinboards
+    return pinboards.Pinboard()
+
+@pytest.fixture
 def instantiated():
     from fuse.components.django import Django
-    from fuse.utils import prompts, validators, pinboards
+    from fuse.utils import prompts, validators
     from fuse import models
 
     return Django(
@@ -12,22 +17,18 @@ def instantiated():
         prompts=models.Prompt,
         resources=models.Resource,
         validators=validators,
-        pinboard=pinboards.Pinboard(),
     )
 
 @pytest.fixture
-def post_setup(instantiated):
-    instantiated.setup()
+def post_setup(instantiated, pinboard):
+    instantiated.setup(pinboard)
     return instantiated
 
 @pytest.fixture
-def post_configure(post_setup):
-    post_setup.configure()
+def post_configure(post_setup, pinboard):
+    post_setup.configure(pinboard)
     return post_setup
 
 def test_init(instantiated):
     assert instantiated.name == 'django'
 
-def test_setup(post_setup):
-    pins = post_setup.pinboard.get(exclude=[])
-    assert len(pins) == 3

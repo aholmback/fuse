@@ -18,7 +18,6 @@ class Component(object):
         self.prompts = prompts
         self.resources = resources
         self.validators = validators
-        self.pinboard = pinboard
 
         self.config = {}
         self.processed_pins = []

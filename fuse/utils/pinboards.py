@@ -19,7 +19,7 @@ class Pinboard(object):
 
 
 
-    def post(self, label, message):
+    def post_pin(self, label, message):
         pin = Pin(label, message)
         pin_id = self.get_pin_id()
 

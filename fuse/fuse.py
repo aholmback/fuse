@@ -10,7 +10,7 @@ from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
 
 from fuse.utils import prompts, validators, pinboards
-from fuse import lineups, models
+from fuse import lineups, models, __version__
 
 
 defaults = init_defaults('fuse')
@@ -25,10 +25,16 @@ class BaseController(CementBaseController):
     class Meta:
         label = 'base'
         description = "Fuse - Generate configurations"
+        arguments = [
+            ( ['-v', '--version'], dict(required=False, action='store_true', help='Display version') ),
+        ]
 
     @expose(hide=True)
     def default(self):
-        self.app.render({}, 'default_base.jinja2')
+        if self.app.pargs.version:
+            print("fuse {version}".format(version=__version__))
+        else:
+            self.app.render({}, 'default_base.jinja2')
 
 class ResetController(CementBaseController):
     class Meta:
