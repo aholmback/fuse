@@ -1,0 +1,29 @@
+{
+    "project_name": {
+        "text": "Project Name"
+        },
+    "project_slug": {
+        "text": "Project Slug",
+        "validators": ["variable_name"]
+    },
+    "semantic_version": {
+        "text": "Version (semantic)",
+        "validators": ["semantic_version"]
+    },
+    "directory": {
+        "text": "Directory",
+        "validators": ["creatable_path","writable_directory","empty_directory"]
+    },
+    "file": {
+        "text": "File",
+        "validators": ["available_path","creatable_path"]
+    },
+    "url": {
+        "text": "Url",
+        "validators": ["url"]
+    },
+    "python_distribution": {
+        "text": "Python distributions",
+        "options": ["2","3"]
+    }
+}

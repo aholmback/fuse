@@ -4,17 +4,15 @@ import os
 
 class Home(Component):
 
-    def setup(self, pinboard):
-        pinboard.post_pin('home_directory', None)
+    def project_home(self, payload, pinboard, prompt):
 
-    def home_directory(self, _):
-        project_home = self.prompt(
+        self.context['project_home'] = prompt(
             'directory',
             text="Project Home",
             default=os.getcwd(),
-            prefill=self.prefill.get('directory', None),
+            prefill=payload,
             pre_validation_hook=os.path.expanduser
         )
 
-        self.post_pin('current_working_directory', project_home)
+        pinboard.post('project_home', self.context['project_home'], handler_filter=lambda handler: handler is not self)
 

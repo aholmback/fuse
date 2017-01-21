@@ -28,28 +28,39 @@ def variable_name(value):
 
     return result
 
-def creatable_dir(value):
+def available_path(value):
+    return not os.path.exists(value)
+
+def creatable_path(value):
     """
     Directory must exist or be possible to create
     """
+    def exists(path):
+        if os.path.exists(path):
+            return path
+        return exists(os.path.split(path)[0])
+
     if os.path.isdir(value):
         return True
-    try:
-        os.makedirs(value)
-        return True
-    except:
-        return False
 
-def writable_dir(value):
+    return writable_directory(exists(value))
+
+def writable_directory(value):
     """
     Must be writeable directory
     """
+    if not os.path.exists(value):
+        return True
+
     return os.access(value, os.W_OK)
 
-def empty_dir(value):
+def empty_directory(value):
     """
     Must be en empty directory
     """
+    if not os.path.exists(value):
+        return True
+
     return not os.listdir(value)
 
 def semantic_version(value):
@@ -61,3 +72,17 @@ def semantic_version(value):
         return True
     except ValueError:
         return False
+
+def url(value):
+    """
+    Value must be valid url
+    """
+    pattern = re.compile(
+                r'^(?:http|ftp)s?://' # http:// or https://
+                r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+                r'localhost|' #localhost...
+                r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+                r'(?::\d+)?' # optional port
+                r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+    return bool(pattern.match(value))

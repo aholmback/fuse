@@ -1,118 +1,74 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-from fuse import models
+import os
 
 class Component(object):
 
-    def __init__(self,
-                 name,
-                 prompter,
-                 prompts,
-                 resources,
-                 validators,
-                 prefill=None,
-                 ):
+    def __init__(self, name, logger):
 
         self.name = name
-        self.prefill = prefill
-        self.prompter = prompter
-        self.prompts = prompts
-        self.resources = resources
-        self.validators = validators
+        self.logger = logger
 
-        self.config = {}
         self.processed_pins = []
+        self.context = {}
+        self.files = {}
 
-        if self.prefill is None:
-            self.prefill = {}
+    def setup(self, pinboard, actions):
+        sender = self
+        handler_filter = lambda handler: handler is self
 
-    def setup(self, pinboard):
-        pass
+        for action in actions:
+            payload = actions[action]
+            pinboard.post(action, payload, sender, handler_filter, enforce=True)
 
-    def configure(self, pinboard):
+    def configure(self, pinboard, prompt):
         """
         Process pins from pinboard and return number of pins processed
         """
         pins = pinboard.get(exclude=self.processed_pins)
         processed_pins = []
+        deferred_pins = []
 
         for pin_id, pin in pins:
-            if not hasattr(self, pin.label):
+            if not pin.is_recipient(self):
                 processed_pins.append(pin_id)
                 continue
 
             try:
-                getattr(self, pin.label)(pin.message)
+                getattr(self, pin.action)(payload=pin.payload, pinboard=pinboard, prompt=prompt)
                 processed_pins.append(pin_id)
             except pinboard.PinNotProcessed:
-                pass
-            
+                self.logger.info(
+                    "Pin `{handler}/{action}` deferred".format(
+                        handler=self,
+                        action=pin.action,
+                    )
+                )
+                deferred_pins.append(pin_id)
+
         self.processed_pins += processed_pins
 
-        return len(processed_pins)
+        result = len(processed_pins) + len(deferred_pins)
 
-
-    def prompt(self, identifier, **parameters):
-        # Fill in empty parameters from persistent storage if present
-        try:
-            default_parameters = self.prompts.get(identifier=identifier)
-
-            for p in ['text', 'description', 'default', 'validators', 'options']:
-                parameters.setdefault(p, getattr(default_parameters, p))
-
-        except self.prompts.DoesNotExist:
-            pass
-
-        # Replace validator descriptors with actual functions
-        if parameters.get('validators', None) is None:
-            parameters['validators'] = []
-        else:
-            parameters['validators'] = [getattr(self.validators, validator) for validator in parameters['validators'].split(',')]
-
-        # Split options to list if it's a string
-        if type(parameters.get('options', None)) is str:
-            parameters['options'] = parameters['options'].split(',')
-
-
-        # Set the default value to prefill (if present)
-        if parameters.get('prefill', None) is not None:
-            parameters['default'] = parameters['prefill']
-
-        # Setup prompter and set its input value
-        prompter = self.prompter(identifier=identifier, **parameters)
-        prompter.input = parameters.get('prefill', None)
-
-        prompter.prompt()
-
-        # Store input value under designate key and return the value
-        return prompter.input
+        return result
 
     def write(self):
-        result = models.Resource.select().where(models.Resource.component == self.name)
+        for target in self.files:
 
-        def in_version_span(sample, span):
-            if sample is None:
-                return True
+            try:
+                os.makedirs(os.path.dirname(target))
+            except OSError:
+                pass
 
-            sample = semantic_version.Version(sample)
-            span = [point if point is None else semantic_version.Version(point) for point in span]
+            with open(target, 'w') as fp:
+                fp.write(self.files[target])
 
-            return (span[0] is None or span[0] <= sample) and (span[1] is None or span[1] >= sample)
+    def finalize(self):
+        pass
 
-        # Filter out all non-applicable versions and sort the remaining entries
-        # by key 'from_version' (priority will be correlated with key 'from_version').
+    def __str__(self):
+        return self.name
 
-        resources = []
-        for row in result:
-            if not in_version_span(self.config.get('version', None), (row.from_version, row.to_version)):
-                continue
-            resources.append(row)
-
-        resources.sort(
-            key=lambda row: row.from_version,
-            reverse=True,
-        )
-
-        for resource in resources:
-            resource.write(self.config)
+    def __unicode__(self):
+        return self.name
 
 

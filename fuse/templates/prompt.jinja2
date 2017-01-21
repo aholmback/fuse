@@ -1,0 +1,7 @@
+{% if prefill is not none %}
+Prefilled value `{{prefill}}` didn't go through validation:
+{% endif %}
+{% if user_input is not none %}
+{% for validator in validators %}+ {{validator}}
+{% endfor %}{% endif %}
+{{ text }}{% if default %} (default: {{ default }}){% endif %}{% if options %} [{{ options|join(',') }}]{% endif %}: 

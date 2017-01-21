@@ -2,6 +2,9 @@
 class PinNotProcessed(Exception):
     pass
 
+class NoActionError(Exception):
+    pass
+
 class Pinboard(object):
 
     def __init__(self):
@@ -19,8 +22,8 @@ class Pinboard(object):
 
 
 
-    def post_pin(self, label, message):
-        pin = Pin(label, message)
+    def post(self, action, payload, sender=None, handler_filter=None, enforce=False):
+        pin = Pin(action, payload, sender, handler_filter, enforce)
         pin_id = self.get_pin_id()
 
         self.pins[pin_id] = pin
@@ -32,7 +35,26 @@ class Pinboard(object):
 
 
 class Pin(object):
+    def __init__(self, action, payload, sender=None, handler_filter=None, enforce=False):
+        self.action = action
+        self.payload = payload
+        self.sender = sender
+        self.handler_filter = (lambda handler: True) if handler_filter is None else handler_filter
+        self.enforce = enforce
 
-    def __init__(self, label, message):
-        self.label = label
-        self.message = message
+    def is_recipient(self, handler):
+        if not self.handler_filter(handler):
+            return False
+
+        if not hasattr(handler, self.action):
+            if not self.enforce:
+                return False
+            else:
+                raise NoActionError(
+                    "Action `{action}` not found in handler `{handler}`".format(
+                        action=self.action,
+                        handler=handler)
+                )
+
+        return True
+

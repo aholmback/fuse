@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import os
-import json
-import collections
+from fuse.utils import json
 
 
 def parse_filename(f):
@@ -28,7 +27,4 @@ def ls(filter_function=None):
     return filter(filter_function, lineups)
 
 def get(lineup_name):
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'lineups', '%s.json') % lineup_name) as f:
-        lineup = json.JSONDecoder(object_pairs_hook=collections.OrderedDict).decode(f.read())
-
-    return lineup
+    return json.get('lineups/%s.json' % lineup_name)

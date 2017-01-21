@@ -9,7 +9,7 @@ __title__ = 'fuse'
 __summary__ = ("Composes boilerplates")
 __uri__ = 'https://github.com/aholmback/fuse'
 
-__version__ = '0.0.2.alpha.17'
+__version__ = '0.0.2.alpha.18'
 
 __author__ = "Creuna Developers"
 __email__ = 'people@creuna.se'

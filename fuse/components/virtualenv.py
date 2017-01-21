@@ -4,62 +4,52 @@ import os
 
 class Virtualenv(Component):
 
-    def setup(self, pinboard):
-        pinboard.post_pin('virtualenv_python_major_version', None)
-        pinboard.post_pin('virtualenv_prompt', None)
-        pinboard.post_pin('virtualenv_directory', None)
+    def project_home(self, payload, pinboard, prompt):
+        self.context['project_home'] = payload
 
-    def current_working_directory(self, project_home):
-        self.config['project_home'] = project_home
-
-    def virtualenv_python_major_version(self, _):
-        self.config['python_major_version'] = self.prompt(
-            'python_major_version',
-            text="Python Major Version",
-            options=['2','3'],
-            prefill=self.prefill.get('python_major_version', None),
-        )
-
-    def virtualenv_prompt(self, _):
-        self.config['prompt'] = self.prompt(
-            'prompt',
+    def prompt(self, payload, pinboard, prompt):
+        self.context['prompt'] = prompt(
+            'project_name',
             text="Prompt for virtualenv",
             default="(env) ",
-            prefill=self.prefill.get('prompt', None),
+            prefill=payload,
         )
 
-    def virtualenv_directory(self, _):
-        if not 'project_home' in self.config:
-            raise self.pinboard.PinNotProcessed
+    def python_distribution(self, payload, pinboard, prompt):
+        self.context['python_distribution'] = prompt(
+            'python_distribution',
+            prefill=payload,
+        )
+
+    def directory(self, payload, pinboard, prompt):
+        if not 'project_home' in self.context:
+            raise pinboard.PinNotProcessed
 
         def make_local_absolut(directory):
-            absolut_dir = directory if directory[0] == '/' else os.path.join(self.config['project_home'], directory)
+            absolut_dir = directory if directory[0] == '/' else os.path.join(self.context['project_home'], directory)
             return absolut_dir
 
-        directory = self.prompt(
+        self.context['directory'] = directory = prompt(
             'directory',
             text="Directory",
             description="Local (to project home) or absolute directory",
             default='env/',
             pre_validation_hook=make_local_absolut,
-            prefill=self.prefill.get('directory', None),
+            prefill=payload,
         )
 
-        self.config['directory'] = directory = make_local_absolut(directory)
+        if directory.startswith(self.context['project_home']):
+            local_dir = directory.replace(self.context['project_home'], '').strip('/')
+            pinboard.post('no_version_control', os.path.join(local_dir, '*'))
 
-        if directory.startswith(self.config['project_home']):
-            local_dir = directory.replace(self.config['project_home'], '')
-            self.post_pin('no_version_control', os.path.join(local_dir, '*'))
-
-
-    def write(self):
+    def finalize(self):
         try:
-            os.makedirs(self.config['directory'])
+            os.makedirs(self.context['directory'])
         except OSError:
             pass
 
-        command = "/usr/local/bin/virtualenv -p python{python_major_version} --quiet --prompt=\"{prompt}\" {directory}"
-        command = command.format(**self.config)
+        command = "/usr/local/bin/virtualenv -p python{python_distribution} --quiet --prompt=\"{prompt}\" {directory}"
+        command = command.format(**self.context)
 
         os.system(command)
 

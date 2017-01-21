@@ -32,5 +32,10 @@
         "prompt": "(env) ",
         "python_distribution": "3",
         "directory": "env/"
+    },
+    "pip": {
+        "requirements_target": "requirements.txt"
+    },
+    "git": {
     }
 }
