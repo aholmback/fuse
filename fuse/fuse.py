@@ -48,7 +48,7 @@ class BaseController(CementBaseController):
 class StartprojectController(CementBaseController):
     class Meta:
         label = 'startproject'
-        description = "Synthesizes a boilerplate based on lineup"
+        description = "Create boilerplate based on lineup"
         stacked_on = 'base'
         stacked_type = 'nested'
         arguments = [
@@ -100,22 +100,30 @@ class StartprojectController(CementBaseController):
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
                 logger=self.app.log,
+                render=self.app.render,
             )
 
             component.setup(pinboard, actions)
             components.append(component)
 
         # Configure as long as components are processing pins
-        while True:
-            pins_processed = 0
-            for component in components:
-                pins_processed += component.configure(
-                    pinboard,
-                    prompt=self.prompt
-                )
+        all_components_configured = False
+        new_pins = len(pinboard)
+        last_change = False
 
-            if pins_processed == 0:
-                break
+        while not all_components_configured or new_pins > 0:
+            last_chance = not new_pins
+
+            pinboard_length = len(pinboard)
+
+            all_components_configured = all(component.configure(
+                    pinboard,
+                    prompt=self.prompt,
+                    last_chance=last_chance,
+                    ) for component in components)
+
+            new_pins = len(pinboard) - pinboard_length
+
 
         # Write to disk
         for component in components:

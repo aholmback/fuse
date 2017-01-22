@@ -4,6 +4,8 @@ import os
 
 class Home(Component):
 
+    component_type = 'global_parameter'
+
     def project_home(self, payload, pinboard, prompt):
 
         self.context['project_home'] = prompt(

@@ -4,6 +4,8 @@ import os
 
 class Git(Component):
 
+    component_type = 'version_control_system'
+
     def project_home(self, payload, pinboard, prompt):
         self.context['project_home'] = payload
         self.context['gitignore'] = os.path.join(self.context['project_home'], '.gitignore')

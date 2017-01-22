@@ -32,7 +32,7 @@
         "prompt": "(env) ",
         "python_distribution": "3",
         "directory": "env/",
-        "retrigger": null
+        "retrigger": "no"
     },
     "pip": {
         "requirements_target": "requirements.txt"
@@ -41,6 +41,9 @@
     },
     "celery": {
 	"broker": "amqp://guest:**@localhost:5672",
-        "retrigger": null
+	"environment": "all",
+	"version": "4.0.2",
+	"setup_file": "{project_home}/{project_slug}/taskrunner/celery.py",
+        "retrigger": "no"
     }
 }

@@ -3,6 +3,9 @@ from fuse.components import Component
 import os
 
 class Pip(Component):
+
+    component_type = 'python_dependency_installer'
+
     def project_home(self, payload, pinboard, prompt):
         self.context['project_home'] = payload
 

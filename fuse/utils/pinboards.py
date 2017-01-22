@@ -50,6 +50,9 @@ class Pinboard(object):
         else:
             return pin_id, pin
 
+    def __len__(self):
+        return len(self.pins)
+
 
 class Pin(object):
     def __init__(self, action, payload, sender=None, handler_filter=None, enforce=False):

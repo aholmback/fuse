@@ -4,6 +4,8 @@ import os
 
 class Virtualenv(Component):
 
+    component_type = 'developer_tool'
+
     def project_home(self, payload, pinboard, prompt):
         self.context['project_home'] = payload
 
@@ -41,7 +43,10 @@ class Virtualenv(Component):
             pinboard.post('no_version_control', os.path.join(local_dir, '*'))
 
     def retrigger(self, payload, pinboard, prompt):
-        response = prompt(load='retrigger')
+        response = prompt(
+                load='retrigger',
+                default=payload,
+                )
 
         if response == 'yes':
             for action in reversed(self.actions):
