@@ -1,10 +1,9 @@
-from __future__ import absolute_import, division, print_function # , unicode_literals ; unicode_literals messes up with Cement's type checking.
+# unicode_literals messes up with Cement's type checking.
+from __future__ import absolute_import, division, print_function
 import six
 import os
 import importlib
 import inflection
-import jinja2
-import pkgutil
 from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
@@ -22,12 +21,20 @@ def run():
     with Fuse() as fuse:
         fuse.run()
 
+
 class BaseController(CementBaseController):
     class Meta:
         label = 'base'
         description = "Fuse - Generate configurations"
         arguments = [
-            ( ['-v', '--version'], dict(required=False, action='store_true', help='Display version') ),
+            (
+                ['-v', '--version'],
+                {
+                    'required': False,
+                    'action': 'store_true',
+                    'help': 'Display version',
+                },
+            )
         ]
 
     @expose(hide=True)
@@ -37,20 +44,6 @@ class BaseController(CementBaseController):
         else:
             self.app.render({}, 'default_base.jinja2')
 
-class ResetController(CementBaseController):
-    class Meta:
-        label = 'reset'
-        description = 'Resets database'
-        stacked_on = 'base'
-        stacked_type = 'nested'
-
-    @expose(hide=True)
-    def default(self):
-        try:
-            models.db.create_tables([models.Prompt, models.Resource])
-            models.data()
-        except models.OperationalError:
-            print("Didn't create or do anything cus stuff already exist")
 
 class StartprojectController(CementBaseController):
     class Meta:
@@ -59,16 +52,40 @@ class StartprojectController(CementBaseController):
         stacked_on = 'base'
         stacked_type = 'nested'
         arguments = [
-            ( ['-l', '--lineup'], dict(required=True, action='store', help='Name of the lineup') ),
-            ( ['--no-prefill'], dict(required=False, dest='prefill', action='store_false', help="Use prefill") ),
-            ( ['--prefill'], dict(required=False, dest='prefill', action='store_true', help="Don't use prefill") ),
+            (
+                ['-l', '--lineup'],
+                {
+                    'required': True,
+                    'action': 'store',
+                    'help': 'Name of the lineup',
+                }
+            ),
+            (
+                ['--confirm'],
+                {
+                    'required': False,
+                    'dest': 'confirm',
+                    'action': 'store_true',
+                    'help': "Confirm each option (default)",
+                    'default': True,
+                }
+            ),
+            (
+                ['--no-confirm'],
+                {
+                    'required': False,
+                    'dest': 'confirm',
+                    'action': 'store_false',
+                    'help': "Use defaults without confirmation",
+                }
+            ),
         ]
 
     @expose(hide=True)
     def default(self):
         lineup_name = self.app.pargs.lineup
         lineup = lineups.get(lineup_name)
-        
+
         pinboard = pinboards.Pinboard()
 
         components = []
@@ -77,7 +94,8 @@ class StartprojectController(CementBaseController):
         for component_module_name, actions in lineup.items():
 
             component_class_name = inflection.camelize(component_module_name)
-            component_module = importlib.import_module('fuse.components.%s' % component_module_name)
+            component_module = importlib.import_module(
+                'fuse.components.%s' % component_module_name)
 
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
@@ -89,7 +107,12 @@ class StartprojectController(CementBaseController):
 
         # Configure as long as components are processing pins
         while True:
-            pins_processed = sum(component.configure(pinboard, prompt=self.prompt) for component in components)
+            pins_processed = 0
+            for component in components:
+                pins_processed += component.configure(
+                    pinboard,
+                    prompt=self.prompt
+                )
 
             if pins_processed == 0:
                 break
@@ -102,8 +125,8 @@ class StartprojectController(CementBaseController):
             component.finalize()
 
     def prompt(
-            self, load=None, text='', description='', validators=None,
-            options=None, prefill=None, default=None,
+            self, load=None, text='', description='',
+            validators=None, options=None,  default=None,
             pre_validation_hook=None, post_validation_hook=None):
 
         # Set input function
@@ -122,13 +145,18 @@ class StartprojectController(CementBaseController):
         try:
             load = {} if load is None else json.get('prompts.json')[load]
         except KeyError:
-            self.app.log.error("Couldn't load prompt `{prompt}`, set load=None or add it to prompts.json.".format(prompt=load))
+            self.app.log.error(
+                "Couldn't load prompt `{prompt}`, set load=None or add it to pr"
+                "ompts.json.".format(prompt=load))
             load = {}
 
         context['text'] = text = text or load.get('text', None)
-        context['description'] = description = description or load.get('description', None)
         context['default'] = default = default or load.get('default', None)
         context['options'] = options = options or load.get('options', None)
+
+        context['description'] = description = (
+            description or load.get('description', None))
+
         validators = validators or load.get('validators', None)
 
         # Replace validator descriptors with actual functions
@@ -136,16 +164,17 @@ class StartprojectController(CementBaseController):
             validators = validator_descriptions = []
         else:
             try:
-                validators = [getattr(validator_functions, validator) for validator in validators]
+                validators = [getattr(validator_functions, validator)
+                              for validator in validators]
             except AttributeError:
                 self.app.log.error(
-                    "Validator `{validator}` was declared in lineup but doesn't exist in validator module.".format(
-                        validator=validator
-                    )
+                    "Validator `{validator}` was declared in lineup but doesn't"
+                    " exist in validator module.".format(validator=validator)
                 )
                 validators = []
 
-            validator_descriptions = [validator.__doc__.strip() for validator in validators if validator.__doc__]
+            validator_descriptions = [validator.__doc__.strip() for validator
+                                      in validators if validator.__doc__]
 
         # If options is a list with elements, create a validator on the
         # fly and replace all other potential validators.
@@ -153,23 +182,26 @@ class StartprojectController(CementBaseController):
             validators = [lambda v: v in options]
 
         context['validators'] = validator_descriptions
-
-        # Set the default value to prefill (if present)
-        context['prefill'] = prefill
         context['default'] = default
 
-        # Set user input to prefill if prefill is enabled
-        user_input = pre_validation_hook(prefill) if self.app.pargs.prefill else None
+        # Set user input to default if confirm is disabled
+        if self.app.pargs.confirm or default is None:
+            user_input = None
+        else:
+            user_input = pre_validation_hook(default)
 
         while user_input is None or not all(validator(user_input) for validator in validators):
             context['user_input'] = user_input
             user_message = self.app.render(context, 'prompt.jinja2', out=None).strip()
 
             try:
-                user_input = pre_validation_hook(input_fn(user_message)) or default
+                user_input = input_fn(user_message) or default
             except EOFError:
                 print('\n')
                 break
+
+            if user_input is not None:
+                user_input = pre_validation_hook(user_input)
 
         return post_validation_hook(user_input)
 
@@ -212,7 +244,7 @@ class Fuse(CementApp):
         label = 'fuse'
         config_defaults = defaults
         base_controller = 'base'
-        handlers = [BaseController, LineupController, StartprojectController, ResetController]
+        handlers = [BaseController, LineupController, StartprojectController]
         extensions = ['jinja2']
         output_handler = 'jinja2'
         template_module = 'fuse.templates'

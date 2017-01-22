@@ -31,11 +31,16 @@
     "virtualenv": {
         "prompt": "(env) ",
         "python_distribution": "3",
-        "directory": "env/"
+        "directory": "env/",
+        "retrigger": null
     },
     "pip": {
         "requirements_target": "requirements.txt"
     },
     "git": {
+    },
+    "celery": {
+	"broker": "amqp://guest:**@localhost:5672",
+        "retrigger": null
     }
 }

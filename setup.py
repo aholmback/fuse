@@ -13,7 +13,6 @@ requirements = [
         'Jinja2==2.9.4',
         'semantic_version==2.6.0',
         'inflection==0.3.1',
-        'peewee==2.8.5',
         'six==1.10.0',
     ]
 
@@ -36,7 +35,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
 
-    install_requires = requirements,
+    install_requires=requirements,
 
     entry_points={
         'console_scripts': [

@@ -2,10 +2,16 @@
     "home": {
         "project_home": "~/test"
     },
+    "virtualenv": {
+        "prompt": "(env) ",
+        "python_distribution": null,
+        "directory": "env/",
+	"retrigger": null
+    },
     "django": {
         "project_name": "Sample Project",
         "project_slug": "sample_project",
-        "version": "1.10.5",
+        "version": null,
         "project_template_root": "https://raw.githubusercontent.com/django/django/{version}/django/conf/project_template/",
         "settings_file": {
             "source": "project_name/settings.py-tpl",
@@ -27,10 +33,5 @@
             "source": "manage.py-tpl",
             "target": "manage.py"
         }
-    },
-    "virtualenv": {
-        "prompt": "(env) ",
-        "python_distribution": "3",
-        "directory": "env/"
     }
 }

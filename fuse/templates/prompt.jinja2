@@ -1,6 +1,3 @@
-{% if prefill is not none %}
-Prefilled value `{{prefill}}` didn't go through validation:
-{% endif %}
 {% if user_input is not none %}
 {% for validator in validators %}+ {{validator}}
 {% endfor %}{% endif %}

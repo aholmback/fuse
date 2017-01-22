@@ -10,10 +10,12 @@ class Component(object):
 
         self.processed_pins = []
         self.context = {}
+        self.context_stash = []
         self.files = {}
 
     def setup(self, pinboard, actions):
         sender = self
+        self.actions = actions
         handler_filter = lambda handler: handler is self
 
         for action in actions:
@@ -24,11 +26,15 @@ class Component(object):
         """
         Process pins from pinboard and return number of pins processed
         """
-        pins = pinboard.get(exclude=self.processed_pins)
         processed_pins = []
         deferred_pins = []
 
-        for pin_id, pin in pins:
+        while True:
+            try:
+                pin_id, pin = pinboard.get(exclude=self.processed_pins)
+            except StopIteration:
+                break
+
             if not pin.is_recipient(self):
                 processed_pins.append(pin_id)
                 continue

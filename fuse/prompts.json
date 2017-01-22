@@ -1,6 +1,5 @@
 {
-    "project_name": {
-        "text": "Project Name"
+    "text": {
         },
     "project_slug": {
         "text": "Project Slug",
@@ -23,7 +22,15 @@
         "validators": ["url"]
     },
     "python_distribution": {
-        "text": "Python distributions",
+        "text": "Choose python distribution",
         "options": ["2","3"]
+    },
+    "tier": {
+        "text": "Choose environment",
+        "options": ["all", "dev", "test", "stage", "prod"]
+    },
+    "retrigger": {
+        "text": "Configure another instance of this component?",
+        "options": ["yes", "no"]
     }
 }

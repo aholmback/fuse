@@ -9,16 +9,15 @@ class Virtualenv(Component):
 
     def prompt(self, payload, pinboard, prompt):
         self.context['prompt'] = prompt(
-            'project_name',
+            load='text',
             text="Prompt for virtualenv",
-            default="(env) ",
-            prefill=payload,
+            default=payload or "(env) ",
         )
 
     def python_distribution(self, payload, pinboard, prompt):
         self.context['python_distribution'] = prompt(
-            'python_distribution',
-            prefill=payload,
+            load='python_distribution',
+            default=payload,
         )
 
     def directory(self, payload, pinboard, prompt):
@@ -30,26 +29,36 @@ class Virtualenv(Component):
             return absolut_dir
 
         self.context['directory'] = directory = prompt(
-            'directory',
+            load='directory',
             text="Directory",
             description="Local (to project home) or absolute directory",
-            default='env/',
+            default=payload or 'env/',
             pre_validation_hook=make_local_absolut,
-            prefill=payload,
         )
 
         if directory.startswith(self.context['project_home']):
             local_dir = directory.replace(self.context['project_home'], '').strip('/')
             pinboard.post('no_version_control', os.path.join(local_dir, '*'))
 
+    def retrigger(self, payload, pinboard, prompt):
+        response = prompt(load='retrigger')
+
+        if response == 'yes':
+            for action in reversed(self.actions):
+                pinboard.post(action, self.actions[action], upnext=True, handler_filter=lambda h: h is self)
+
+            self.context_stash.append(self.context.copy())
+
     def finalize(self):
-        try:
-            os.makedirs(self.context['directory'])
-        except OSError:
-            pass
+        self.context_stash.append(self.context.copy())
+        for context in self.context_stash:
+            try:
+                os.makedirs(context['directory'])
+            except OSError:
+                pass
 
-        command = "/usr/local/bin/virtualenv -p python{python_distribution} --quiet --prompt=\"{prompt}\" {directory}"
-        command = command.format(**self.context)
+            command = "/usr/local/bin/virtualenv -p python{python_distribution} --quiet --prompt=\"{prompt}\" {directory}"
+            command = command.format(**context)
 
-        os.system(command)
+            os.system(command)
 

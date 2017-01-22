@@ -9,8 +9,9 @@ class Pinboard(object):
 
     def __init__(self):
         self.pin_id = None
-        self.pins = {}
+        self.pins = []
         self.PinNotProcessed = PinNotProcessed
+        self.next_index = 0
 
     def get_pin_id(self):
         if self.pin_id is None:
@@ -22,16 +23,32 @@ class Pinboard(object):
 
 
 
-    def post(self, action, payload, sender=None, handler_filter=None, enforce=False):
+    def post(self, action, payload, sender=None, handler_filter=None,
+            enforce=False, upnext=False):
+
         pin = Pin(action, payload, sender, handler_filter, enforce)
         pin_id = self.get_pin_id()
 
-        self.pins[pin_id] = pin
+        if upnext:
+            self.pins.insert(self.next_index, (pin_id, pin))
+        else:
+            self.pins.append((pin_id, pin))
 
         return pin_id
 
     def get(self, exclude):
-        return [(pin_id, self.pins[pin_id]) for pin_id in self.pins if pin_id not in exclude]
+        try:
+            pin_id, pin = self.pins[self.next_index]
+        except IndexError:
+            self.next_index = 0
+            raise StopIteration
+
+        self.next_index += 1
+
+        if pin_id in exclude:
+            return self.get(exclude)
+        else:
+            return pin_id, pin
 
 
 class Pin(object):
