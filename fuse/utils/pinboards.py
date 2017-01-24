@@ -7,6 +7,8 @@ class NoActionError(Exception):
 
 class Pinboard(object):
 
+    FIRST, UPNEXT, LAST = range(3)
+
     def __init__(self):
         self.pin_id = None
         self.pins = []
@@ -24,15 +26,25 @@ class Pinboard(object):
 
 
     def post(self, action, payload, sender=None, handler_filter=None,
-            enforce=False, upnext=False):
+            enforce=False, position=None):
 
+        # Set default position constant (should always be LAST)
+        if position is None:
+            position = self.LAST
+
+        # Translate position constant to corresponding index
+        index = {
+            self.FIRST: 0,
+            self.UPNEXT: self.next_index,
+            self.LAST: len(self.pins),
+        }[position]
+
+        # Create pin and generate pin_id
         pin = Pin(action, payload, sender, handler_filter, enforce)
         pin_id = self.get_pin_id()
 
-        if upnext:
-            self.pins.insert(self.next_index, (pin_id, pin))
-        else:
-            self.pins.append((pin_id, pin))
+        # Insert pin+pin_id at given index
+        self.pins.insert(index, (pin_id, pin))
 
         return pin_id
 

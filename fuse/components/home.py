@@ -19,6 +19,6 @@ class Home(Component):
                 'project_home',
                 self.context['project_home'],
                 handler_filter=lambda handler: handler is not self,
-                upnext=True,
+                position=pinboard.FIRST,
                 )
 

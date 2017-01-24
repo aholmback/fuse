@@ -50,7 +50,7 @@ class Virtualenv(Component):
 
         if response == 'yes':
             for action in reversed(self.actions):
-                pinboard.post(action, self.actions[action], upnext=True, handler_filter=lambda h: h is self)
+                pinboard.post(action, self.actions[action], position=pinboard.UPNEXT, handler_filter=lambda h: h is self)
 
             self.context_stash.append(self.context.copy())
 

@@ -84,7 +84,7 @@ class Celery(Component):
                 pinboard.post(
                         action,
                         self.actions[action],
-                        upnext=True,
+                        position=pinboard.UPNEXT,
                         handler_filter=lambda h: h is self,
                         )
 
