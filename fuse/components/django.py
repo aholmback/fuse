@@ -58,7 +58,6 @@ class Django(Component):
 
     def project_name(self, payload, pinboard, prompt):
         self.context['project_name'] = prompt(
-            load='text',
             text="Human-friendly project name",
             default=payload,
         )
@@ -75,8 +74,9 @@ class Django(Component):
             raise pinboard.PinNotProcessed
 
         self.context['project_slug']  = prompt(
-            load='project_slug',
+            text="Project Slug",
             default=payload or re.sub('[^0-9a-zA-Z]+', '_', self.context['project_name'].lower()),
+            validators=['variable_name'],
         )
 
         pinboard.post(
@@ -88,8 +88,10 @@ class Django(Component):
 
     def version(self, payload, pinboard, prompt):
         self.context['version'] = prompt(
+            text="Version (semantic)",
             load='semantic_version',
             default=payload,
+            validators=['semantic_version'],
         )
 
         pinboard.post('python_dependency', 'django==%s' % self.context['version'])
@@ -100,9 +102,9 @@ class Django(Component):
             raise pinboard.PinNotProcessed
 
         self.context['project_template_root'] = prompt(
-            load='url',
             text="Project template root",
             default=payload,
+            validators=['url'],
         ).format(version=self.context['version'])
 
     def settings_file(self, payload, pinboard, prompt):

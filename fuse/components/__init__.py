@@ -32,6 +32,7 @@ class Component(object):
     python_dependency       string          String identifying a python requirement
     service_dependency      string          Url identifying a service requirement
     os_depency              string          String identifying an os requirement
+    deployment_tiers        list of strings List of environments (dev, stage, prod etc)
 
     """
 

@@ -25,10 +25,10 @@ class Pip(Component):
             raise pinboard.PinNotProcessed
 
         self.context['requirements_target'] = prompt(
-            'file',
             text="Target location for requirements",
             default=payload or os.path.join(self.context['project_home'], 'requirements.txt'),
             pre_validation_hook=lambda v: os.path.join(self.context['project_home'], v),
+            validators=['available_path','creatable_path'],
         )
 
         self.files[self.context['requirements_target']] = ''

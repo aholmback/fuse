@@ -6,6 +6,9 @@ class Celery(Component):
 
     component_type = 'taskrunner'
 
+    def deployment_tiers(self, payload, pinboard, prompt):
+        self.context['deployment_tiers'] = payload
+
     def project_home(self, payload, pinboard, prompt):
         self.context['project_home'] = payload
 
@@ -14,18 +17,18 @@ class Celery(Component):
 
     def broker(self, payload, pinboard, prompt):
         self.context['broker'] = prompt(
-                load='url',
                 text="Broker (a.k.a. Transport) URI",
                 default=payload,
+                validators=['url'],
                 )
 
         pinboard.post('service_dependency', self.context['broker'])
 
     def version(self, payload, pinboard, prompt):
         self.context['version'] = prompt(
-                load='semantic_version',
                 text="Version",
                 default=payload,
+                validators=['semantic_version'],
                 )
 
         pinboard.post('python_dependency', 'celery==%s' % self.context['version'])
@@ -35,7 +38,6 @@ class Celery(Component):
             raise pinboard.PinNotProcessed
 
         self.context['tier'] = prompt(
-                load='tier',
                 default=payload,
                 )
 
@@ -58,9 +60,9 @@ class Celery(Component):
             return value.format(**self.context)
 
         self.context['setup_file'] = prompt(
-                load='file',
                 text="Location for celery.py",
                 default=payload,
+                validators=['available_path', 'creatable_path'],
                 pre_validation_hook=render_path,
                 )
 
@@ -69,11 +71,12 @@ class Celery(Component):
 
     def retrigger(self, payload, pinboard, prompt):
         response = prompt(
-                load='retrigger',
+                text="Configure another instance of this component?",
                 default=payload,
+                options: ['y','n']
                 )
 
-        if response == 'yes':
+        if response == 'y':
 
             self.context_stash.append(self.context.copy())
 

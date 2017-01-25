@@ -11,15 +11,15 @@ class Virtualenv(Component):
 
     def prompt(self, payload, pinboard, prompt):
         self.context['prompt'] = prompt(
-            load='text',
             text="Prompt for virtualenv",
             default=payload or "(env) ",
         )
 
     def python_distribution(self, payload, pinboard, prompt):
         self.context['python_distribution'] = prompt(
-            load='python_distribution',
+            text="Choose python distribution",
             default=payload,
+            options=['2','3'],
         )
 
     def directory(self, payload, pinboard, prompt):
@@ -31,10 +31,10 @@ class Virtualenv(Component):
             return absolut_dir
 
         self.context['directory'] = directory = prompt(
-            load='directory',
             text="Directory",
             description="Local (to project home) or absolute directory",
             default=payload or 'env/',
+            validators=['creatable_path','writable_directory','empty_directory'],
             pre_validation_hook=make_local_absolut,
         )
 
@@ -44,8 +44,9 @@ class Virtualenv(Component):
 
     def retrigger(self, payload, pinboard, prompt):
         response = prompt(
-                load='retrigger',
+                text="Configure another instance of this component?",
                 default=payload,
+                options=['y','n'],
                 )
 
         if response == 'yes':

@@ -12,11 +12,12 @@ class Home(Component):
             load='directory',
             text="Project Home",
             default=payload or os.getcwd(),
-            pre_validation_hook=os.path.expanduser
+            validators=['creatable_path','writable_directory','empty_directory'],
+            pre_validation_hook=os.path.expanduser,
         )
 
         pinboard.post(
-                'project_home',
+                text="Project home",
                 self.context['project_home'],
                 handler_filter=lambda handler: handler is not self,
                 position=pinboard.FIRST,

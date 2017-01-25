@@ -73,6 +73,12 @@ def semantic_version(value):
     except ValueError:
         return False
 
+def comma_separated_identifiers(values):
+    """
+    Value must be a list of valid identifiers (alphanumerical + underscore)
+    """
+    return all(identifier(value) for value in values.split(','))
+
 def url(value):
     """
     Value must be valid url
