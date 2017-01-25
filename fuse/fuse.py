@@ -2,11 +2,13 @@
 from __future__ import absolute_import, division, print_function
 import six
 import os
+import sys
 import importlib
 import inflection
 from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
+from cement.core.exc import CaughtSignal
 
 from fuse.utils import validators as validator_functions
 from fuse.utils import pinboards, json
@@ -85,17 +87,29 @@ class StartprojectController(CementBaseController):
     def default(self):
         lineup_name = self.app.pargs.lineup
         lineup = lineups.get(lineup_name)
+        self.app.log.info("Found lineup `{lineup}'".format(lineup=lineup_name))
 
         pinboard = pinboards.Pinboard()
 
         components = []
 
-        # Instantiate components
-        for component_module_name, actions in lineup.items():
+        # Setup components based on specified lineup
+        for component_module_name in lineup:
 
+            actions = lineup[component_module_name]
             component_class_name = inflection.camelize(component_module_name)
-            component_module = importlib.import_module(
-                'fuse.components.%s' % component_module_name)
+
+            try:
+                component_module = importlib.import_module(
+                    'fuse.components.%s' % component_module_name)
+                self.app.log.info("Loading component `{component}`".format(
+                    component=component_module_name)
+                    )
+            except ImportError:
+                self.app.log.error("Could not load component `{component}`".format(
+                    component=component_module_name)
+                    )
+                sys.exit(1)
 
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
@@ -106,22 +120,71 @@ class StartprojectController(CementBaseController):
             component.setup(pinboard, actions)
             components.append(component)
 
-        # Configure as long as components are processing pins
+        # Configure all components
         all_components_configured = False
         new_pins = len(pinboard)
-        last_change = False
+        iteration = 0
 
         while not all_components_configured or new_pins > 0:
+            # Keep track of iteration for informative user messages
+            iteration += 1
+
+            # If last iteration didn't result in any new pins
+            # this will be the last chance for components to
+            # process their pins: A deferral-attempt will raise
+            # RuntimeError.
             last_chance = not new_pins
 
+            self.app.log.info(
+                    ("[Iteration {iteration}] new_pins={new_pins}, "
+                     "all_components_configured={all_components_configured}, "
+                     "last_chance={last_chance}").format(
+                        iteration=iteration,
+                        all_components_configured=all_components_configured,
+                        last_chance=last_chance,
+                        new_pins=new_pins,
+                        )
+                    )
+
+            # Assume all components configured.
+            all_components_configured = True
+
+            # Store number of pins before configure components
             pinboard_length = len(pinboard)
 
-            all_components_configured = all(component.configure(
-                    pinboard,
-                    prompt=self.prompt,
-                    last_chance=last_chance,
-                    ) for component in components)
+            # Configure all components in defined order.
+            for component in components:
 
+                self.app.log.info(
+                        "Configuring component `{component}`".format(
+                            component=component.name,
+                            ))
+
+                try:
+                    component_configured = component.configure(
+                            pinboard,
+                            prompt=self.prompt,
+                            last_chance=last_chance,
+                            )
+                except CaughtSignal as e:
+                    print(e)
+                    self.app.log.info("Exit")
+                    sys.exit(1)
+
+                if component_configured:
+                    self.app.log.info(
+                            "All current pins processed by component `{component}`".format(
+                                component=component.name,
+                                ))
+                else:
+                    self.app.log.info(
+                            "Not all current pins processed by component `{component}`".format(
+                                component=component.name,
+                                ))
+                    all_components_configured = False
+
+
+            # Check if pinboard has new pins
             new_pins = len(pinboard) - pinboard_length
 
 
@@ -129,6 +192,7 @@ class StartprojectController(CementBaseController):
         for component in components:
             component.write()
 
+        # Run post-write actions
         for component in components:
             component.finalize()
 
@@ -202,11 +266,7 @@ class StartprojectController(CementBaseController):
             context['user_input'] = user_input
             user_message = self.app.render(context, 'prompt.jinja2', out=None).strip()
 
-            try:
-                user_input = input_fn(user_message) or default
-            except EOFError:
-                print('\n')
-                break
+            user_input = input_fn(user_message) or default
 
             if user_input is not None:
                 user_input = pre_validation_hook(user_input)

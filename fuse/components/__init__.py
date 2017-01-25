@@ -81,23 +81,34 @@ class Component(object):
 
     def setup(self, pinboard, actions):
         """
-        Posts all actions in actions to pinboard
+        Posts all actions in `actions` to pinboard
 
         Fuse is calling this method when loading lineup.
         """
-        sender = self
         self.actions = actions
-        handler_filter = lambda handler: handler is self
 
         for action in actions:
             payload = actions[action]
-            pinboard.post(action, payload, sender, handler_filter, enforce=True)
+            pinboard.post(
+                    action=action,
+                    payload=payload,
+                    sender=self,
+                    handler_filter=lambda handler: handler is self,
+                    enforce=True,
+                    upnext=False,
+                    )
 
     def configure(self, pinboard, prompt, last_chance=False):
         """
-        Process pins from pinboard. Return true if no pins were deferred.
+        Process pins from pinboard. Return true if all pins were processed
+        (i.e. none was deferred).
 
-        If last_chance is True, a deferral will raise a runtime exception.
+        Parameter `last_chance` will be set to True if all pins were processed last
+        iteration which forbids deferrals by raising runtime exception.
+        This is to prevent infinite loops when actions are unable to process pins.
+
+        User can trigger deferral by hitting ctrl-D. User-triggered deferrals bypass
+        last_chance.
         """
 
         all_pins_processed = True
@@ -114,6 +125,15 @@ class Component(object):
             try:
                 getattr(self, pin.action)(payload=pin.payload, pinboard=pinboard, prompt=prompt)
                 self.processed_pins.append(pin_id)
+            except EOFError:
+                print('EOF')
+                all_pins_processed = False
+                self.logger.info(
+                    "Pin `{handler}/{action}` deferred by user (received EOF)".format(
+                        handler=self,
+                        action=pin.action,
+                    ))
+                continue
             except pinboard.PinNotProcessed:
                 all_pins_processed = False
                 self.logger.info(

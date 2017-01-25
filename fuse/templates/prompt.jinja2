@@ -1,4 +1,4 @@
 {% if user_input is not none %}
 {% for validator in validators %}+ {{validator}}
 {% endfor %}{% endif %}
-{{ text }}{% if default %} (default: {{ default }}){% endif %}{% if options %} [{{ options|join(',') }}]{% endif %}: 
+{{ text or "Enter value" }}{% if default %} (default: {{ default }}){% endif %}{% if options %} [{{ options|join(',') }}]{% endif %}:

@@ -94,8 +94,6 @@ class Django(Component):
 
         pinboard.post('python_dependency', 'django==%s' % self.context['version'])
 
-
-
     def project_template_root(self, payload, pinboard, prompt):
         if not 'version' in self.context:
             raise pinboard.PinNotProcessed
@@ -107,6 +105,9 @@ class Django(Component):
         ).format(version=self.context['version'])
 
     def settings_file(self, payload, pinboard, prompt):
+        if not 'project_home' in self.context:
+            raise pinboard.PinNotProcessed
+
         target = os.path.join(
             self.context['project_home'],
             payload['target'].format(project_slug=self.context['project_slug'])

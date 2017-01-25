@@ -11,6 +11,7 @@ class Pinboard(object):
         self.pin_id = None
         self.pins = []
         self.PinNotProcessed = PinNotProcessed
+        self.NoActionError = NoActionError
         self.next_index = 0
 
     def get_pin_id(self):
