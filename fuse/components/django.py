@@ -67,7 +67,7 @@ class Django(Component):
                 'project_name',
                 self.context['project_name'],
                 handler_filter=lambda handler: handler is not self,
-                upnext=True,
+                position=pinboard.UPNEXT,
                 )
 
     def project_slug(self, payload, pinboard, prompt):
@@ -83,7 +83,7 @@ class Django(Component):
                 'project_slug',
                 self.context['project_slug'],
                 handler_filter=lambda handler: handler is not self,
-                upnext=True,
+                position=pinboard.UPNEXT,
                 )
 
     def version(self, payload, pinboard, prompt):
@@ -93,6 +93,7 @@ class Django(Component):
         )
 
         pinboard.post('python_dependency', 'django==%s' % self.context['version'])
+
 
     def project_template_root(self, payload, pinboard, prompt):
         if not 'version' in self.context:
