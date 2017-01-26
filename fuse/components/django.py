@@ -1,12 +1,13 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-from fuse.components import Component
-from fuse.utils import edit
+import re
+import os
+import hashlib
+import six
 from jinja2 import Template
 import semantic_version
-import hashlib
-import re
-import six
-import os
+from fuse.components import Component
+from fuse.utils import edit
+from fuse.utils.files import FileFactory
 
 if six.PY2:
     from urllib2 import urlopen, HTTPError
@@ -18,6 +19,10 @@ class Django(Component):
 
     component_type = 'framework'
 
+    def post_setup(self):
+        self.project_template_root = 'https://raw.githubusercontent.com/django/django/{version}/django/conf/project_template/'
+
+
     def project_home(self, payload, pinboard, prompt):
         self.context['project_home'] = payload
 
@@ -25,6 +30,26 @@ class Django(Component):
 
         self.context.setdefault('components_settings', {})
         entry_identifier = ':'.join([payload['key'], payload['environment']])
+
+        if not payload['environment'] == '*':
+            path = os.path.join(
+                    self.context['project_home'],
+                    '.env.{environment}'.format(
+                        environment=payload['environment'],
+                        ),
+                    )
+
+            env_key = '{prefix}_{key}'.format(
+                    prefix=self.context['project_identifier'].upper(),
+                    key=payload['key'],
+                    )
+
+            self.context.setdefault(path, {})
+            #self.files[path][env_key] = payload['value']
+
+            payload['value'] = 'env(%s)' % env_key
+            payload['type'] = 'function'
+
 
         self.context['components_settings'][entry_identifier] = payload
             
@@ -58,8 +83,8 @@ class Django(Component):
             position=pinboard.FIRST,
         )
 
-    def environments(self, payload, pinboard, prompt):
-        self.context['environments'] = prompt(
+    def project_environments(self, payload, pinboard, prompt):
+        self.context['project_environments'] = prompt(
             text="Comma-separated list of environment identifiers",
             default=payload,
             validators=['identifier_list'],
@@ -67,8 +92,8 @@ class Django(Component):
         )
 
         pinboard.post(
-            'environments',
-            self.context['environments'],
+            'project_environments',
+            self.context['project_environments'],
             handler_filter=lambda handler: handler is not self,
             position=pinboard.FIRST,
         )
@@ -95,45 +120,43 @@ class Django(Component):
         ).format(version=self.context['version'])
 
     def settings_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt, 'settings_path')
+        self.add_file(payload, 'settings', 'project_name/settings.py-tpl')
 
     def init_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt, 'project_init_path')
+        self.add_file(payload, 'project_init', 'project_name/__init__.py-tpl')
 
     def urls_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt, 'root_urls_path')
+        self.add_file(payload, 'urls', 'project_name/urls.py-tpl')
 
     def wsgi_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt, 'wsgi_path')
+        self.add_file(payload, 'wsgi', 'project_name/wsgi.py-tpl')
 
     def manage_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt, 'manage_path')
+        self.add_file(payload, 'manage', 'manage.py-tpl')
 
-    def add_file(self, payload, pinboard, prompt, context_identifier):
-        if not set(['project_template_root', 'project_identifier', 'project_home']).issubset(self.context):
-            raise pinboard.PinNotProcessed
+    def add_file(self, path, identifier, template):
+        FileFactory(
+                component=self.name,
+                identifier=identifier,
+                render=self.http_render,
+                path=path,
+                context=self.context,
+                template=template,
+                )
 
-        source = self.context['project_template_root'] + payload['source']
-        content = urlopen(source).read().decode('utf-8')
-        target = os.path.join(
-            self.context['project_home'],
-            payload['target'].format(project_identifier=self.context['project_identifier'])
-        )
+    def http_render(self, context, template, out):
+        template = self.project_template_root + template
+        template = template.format(**self.context)
 
-        self.context[context_identifier] = target
+        try:
+            content = urlopen(template).read().decode('utf-8')
+        except HTTPError:
+            self.log.error("url `{url}` not found".format(url=template))
+            raise
 
-        self.files[target] = Template(content).render(
+        return Template(content).render(
             project_name=self.context['project_identifier'],
             django_version=self.context['version'],
             docs_version='.'.join(self.context['version'].split('.')[:-1])
         )
-
-    def pre_write(self):
-        self.context['django_settings'] = self.files[self.context['settings_path']]
-
-        self.files[self.context['settings_path']] = self.render(
-                self.context,
-                'django/settings.py.j2',
-                out=None,
-                )
 

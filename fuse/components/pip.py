@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse.components import Component
+from fuse.utils.files import FileFactory
 import os
 
 class Pip(Component):
@@ -18,7 +19,14 @@ class Pip(Component):
 
         self.context['python_dependencies'].append(payload)
 
-        self.files[self.context['requirements_target']] = '\n'.join(self.context['python_dependencies'])
+        FileFactory(
+                component=self.name,
+                identifier='requirements.txt',
+                path=self.context['requirements_target'],
+                context=self.context,
+                render=self.render,
+                )
+
 
     def requirements_target(self, payload, pinboard, prompt):
         if not 'project_home' in self.context:

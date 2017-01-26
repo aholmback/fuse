@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse.components import Component
+from fuse.utils.files import FileFactory
 import os
 
 class Celery(Component):
@@ -36,14 +37,17 @@ class Celery(Component):
 
         pinboard.post('global_setting', payload)
 
-    def environments(self, payload, pinboard, prompt):
-        self.context['environments'] = payload
+    def project_environments(self, payload, pinboard, prompt):
+        self.context['project_environments'] = payload
 
     def environment(self, payload, pinboard, prompt):
-        if not 'environments' in self.context:
+        if not 'project_environments' in self.context:
             raise pinboard.PinNotProcessed
 
-        options = tuple(zip(self.context['environments'] + ['*'], self.context['environments'] + ['This is a core setting for all environments']))
+        options = tuple(zip(
+            self.context['project_environments'] + ['*'],
+            self.context['project_environments'] + ["This is a core setting for all environments"],
+            ))
 
         self.context['environment'] = prompt(
             text="Which environment should this setting be applied to?",
@@ -74,6 +78,12 @@ class Celery(Component):
                 pre_validation_hook=render_path,
                 )
 
-        self.files[self.context['setup_file']] = self.render(self.context, 'celery/celery.py.j2', out=None)
+        FileFactory(
+                component=self.name,
+                identifier='celery.py',
+                path=self.context['setup_file'],
+                context=self.context,
+                render=self.render,
+                )
 
 

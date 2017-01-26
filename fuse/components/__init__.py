@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-import os, sys
+from fuse.utils.files import FileFactory
 
 class Component(object):
     """
@@ -36,14 +36,14 @@ class Component(object):
 
     """
 
-    def __init__(self, name, logger, render):
+    def __init__(self, name, log, render):
 
         # Name of component module (file name without .py)
         self.name = name
 
         # Application wide logger.
-        # Usage: logger.info([message])
-        self.logger = logger
+        # Usage: log.info([message])
+        self.log = log
 
         # Render function provided by application wide instance of 
         # jinja2 template engine.
@@ -80,6 +80,9 @@ class Component(object):
         self.actions = None
 
 
+    def pre_setup(self):
+        pass
+
     def setup(self, pinboard, actions):
         """
         Posts all actions in `actions` to pinboard
@@ -88,8 +91,20 @@ class Component(object):
         """
         self.actions = actions
 
-        for action in actions:
-            payload = actions[action]
+        for action, payload in actions.items():
+
+            # When an action is queued more than once an identifier must exist
+            # the prevent the action identifiers from clashing.
+            # This will, by procedure, correspond to the index of the context
+            # stash that the action will write to.
+            # Nothing will be done to enforce the index of the context stash
+            # to be the same as the action suggests, but it is the most logical
+            # way to distinguish two or more otherwise identical actions.
+            try:
+                action, stash_index = action.split(':')
+            except ValueError:
+                stash_index = 0
+
             pinboard.post(
                     action=action,
                     payload=payload,
@@ -98,6 +113,9 @@ class Component(object):
                     enforce=True,
                     position=pinboard.LAST,
                     )
+
+    def post_setup(self):
+        pass
 
     def configure(self, pinboard, prompt, last_chance=False):
         """
@@ -129,7 +147,7 @@ class Component(object):
             except EOFError:
                 print('EOF')
                 all_pins_processed = False
-                self.logger.info(
+                self.log.info(
                     "Pin `{handler}/{action}` deferred by user (received EOF)".format(
                         handler=self,
                         action=pin.action,
@@ -137,7 +155,7 @@ class Component(object):
                 continue
             except pinboard.PinNotProcessed:
                 all_pins_processed = False
-                self.logger.info(
+                self.log.info(
                     "Pin `{handler}/{action}` deferred (last_chance={last_chance})".format(
                         handler=self,
                         action=pin.action,
@@ -145,7 +163,7 @@ class Component(object):
                     )
                 )
                 if last_chance:
-                    self.logger.error(
+                    self.log.error(
                             "Pin `{handler}/{action}` could not be processed.".format(
                                 handler=self,
                                 action=pin.action,
@@ -159,15 +177,9 @@ class Component(object):
         pass
 
     def write(self):
-        for target in self.files:
+        for f in FileFactory.files.values():
+            f.write()
 
-            try:
-                os.makedirs(os.path.dirname(target))
-            except OSError:
-                pass
-
-            with open(target, 'w') as fp:
-                fp.write(self.files[target])
 
     def post_write(self):
         pass

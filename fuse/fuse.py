@@ -43,7 +43,7 @@ class BaseController(CementBaseController):
         if self.app.pargs.version:
             print("fuse {version}".format(version=__version__))
         else:
-            self.app.render({}, 'default_base.jinja2')
+            self.app.render({}, 'default_base.j2')
 
 
 class StartprojectController(CementBaseController):
@@ -93,9 +93,10 @@ class StartprojectController(CementBaseController):
         components = []
 
         # Setup components based on specified lineup
-        for component_module_name in lineup:
+        for component_module_name, actions in lineup.items():
 
-            actions = lineup[component_module_name]
+            # The class name of a component is always in CamelCase 
+            # while module name is always in snake_case
             component_class_name = inflection.camelize(component_module_name)
 
             try:
@@ -112,11 +113,13 @@ class StartprojectController(CementBaseController):
 
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
-                logger=self.app.log,
+                log=self.app.log,
                 render=self.app.render,
             )
 
+            component.pre_setup()
             component.setup(pinboard, actions)
+            component.post_setup()
             components.append(component)
 
         # Configure all components
@@ -256,7 +259,7 @@ class StartprojectController(CementBaseController):
 
         while user_input is None or not all(validator(user_input) for validator in validators):
             context['user_input'] = user_input
-            user_message = self.app.render(context, 'prompt.jinja2', out=None).strip()
+            user_message = self.app.render(context, 'prompt.j2', out=None).strip()
 
             user_input = input_fn(user_message)
 
@@ -287,7 +290,7 @@ class LineupController(CementBaseController):
 
     @expose(hide=True)
     def default(self):
-        self.app.render({}, 'default_lineup.jinja2')
+        self.app.render({}, 'default_lineup.j2')
 
 
     @expose(help="Inspect lineup")
@@ -300,14 +303,14 @@ class LineupController(CementBaseController):
             'lineup_name': lineup_name,
         }
 
-        self.app.render(context, 'lineup.jinja2')
+        self.app.render(context, 'lineup.j2')
 
     @expose(help="List available lineups", aliases=['list'], aliases_only=True)
     def show_all(self):
         context = {
             'lineups': lineups.ls(),
         }
-        self.app.render(context, 'lineups.jinja2')
+        self.app.render(context, 'lineups.j2')
 
 class Fuse(CementApp):
     class Meta:

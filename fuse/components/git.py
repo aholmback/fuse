@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-from fuse.components import Component
 import os
+from fuse.components import Component
+from fuse.utils.files import FileFactory
 
 class Git(Component):
 
@@ -18,7 +19,15 @@ class Git(Component):
             self.context['no_version_control'] = []
 
         self.context['no_version_control'].append(payload)
-        self.files[self.context['gitignore']] = '\n'.join(self.context['no_version_control'])
+
+        FileFactory(
+                component=self.name,
+                identifier='gitignore',
+                path=self.context['gitignore'],
+                context=self.context,
+                render=self.render,
+                )
+
 
 
 
