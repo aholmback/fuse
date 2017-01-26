@@ -16,10 +16,15 @@ class Virtualenv(Component):
         )
 
     def python_distribution(self, payload, pinboard, prompt):
+        options=[
+            ('2', '2.7+'),
+            ('3', '3.5+'),
+        ]
+
         self.context['python_distribution'] = prompt(
             text="Choose python distribution",
             default=payload,
-            options=['2','3'],
+            options=options,
         )
 
     def directory(self, payload, pinboard, prompt):
@@ -43,13 +48,18 @@ class Virtualenv(Component):
             pinboard.post('no_version_control', os.path.join(local_dir, '*'))
 
     def retrigger(self, payload, pinboard, prompt):
-        response = prompt(
-                text="Configure another instance of this component?",
-                default=payload,
-                options=['y','n'],
-                )
+        options = (
+            (True, 'yes'),
+            (False, 'no'),
+        )
 
-        if response == 'yes':
+        response = prompt(
+            text="Configure another instance of this component?",
+            default=payload,
+            options=options,
+            )
+
+        if response:
             for action in reversed(self.actions):
                 pinboard.post(action, self.actions[action], position=pinboard.UPNEXT, handler_filter=lambda h: h is self)
 

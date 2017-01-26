@@ -16,7 +16,7 @@ def text(value):
     """
     return True
 
-def variable_name(value):
+def identifier(value):
     """
     Value can only contain alphanumerical characters and underscore
     """
@@ -73,11 +73,11 @@ def semantic_version(value):
     except ValueError:
         return False
 
-def comma_separated_identifiers(values):
+def identifier_list(values):
     """
     Value must be a list of valid identifiers (alphanumerical + underscore)
     """
-    return all(identifier(value) for value in values.split(','))
+    return all(identifier(value) for value in values)
 
 def url(value):
     """

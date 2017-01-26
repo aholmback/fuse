@@ -26,7 +26,7 @@ class Component(object):
     ======                  ============    ===================
     project_home            string          Directory for project files
     project_name            string          Human-friendly project name
-    project_slug            string          Identifier-friendly project name
+    project_identifier      string          Code-friendly project name
     no_version_control      string          Path (relative to project home)
     global_setting          dict            Key/value + tier
     python_dependency       string          String identifying a python requirement

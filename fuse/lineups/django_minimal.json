@@ -10,24 +10,24 @@
     },
     "django": {
         "project_name": "Sample Project",
-        "project_slug": "sample_project",
+        "project_identifier": "sample_project",
         "version": null,
         "project_template_root": "https://raw.githubusercontent.com/django/django/{version}/django/conf/project_template/",
         "settings_file": {
             "source": "project_name/settings.py-tpl",
-            "target": "{project_slug}/settings.py"
+            "target": "{project_identifier}/settings.py"
         },
         "init_file": {
             "source": "project_name/__init__.py-tpl",
-            "target": "{project_slug}/__init__.py"
+            "target": "{project_identifier}/__init__.py"
         },
         "urls_file": {
             "source": "project_name/urls.py-tpl",
-            "target": "{project_slug}/urls.py"
+            "target": "{project_identifier}/urls.py"
         },
         "wsgi_file": {
             "source": "project_name/wsgi.py-tpl",
-            "target": "{project_slug}/wsgi.py"
+            "target": "{project_identifier}/wsgi.py"
         },
         "manage_file": {
             "source": "manage.py-tpl",

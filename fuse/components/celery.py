@@ -6,16 +6,16 @@ class Celery(Component):
 
     component_type = 'taskrunner'
 
-    def deployment_tiers(self, payload, pinboard, prompt):
-        self.context['deployment_tiers'] = payload
-
     def project_home(self, payload, pinboard, prompt):
         self.context['project_home'] = payload
 
-    def project_slug(self, payload, pinboard, prompt):
-        self.context['project_slug'] = payload
+    def project_identifier(self, payload, pinboard, prompt):
+        self.context['project_identifier'] = payload
 
     def broker(self, payload, pinboard, prompt):
+        if not 'environment' in self.context:
+            raise pinboard.PinNotProcessed
+
         self.context['broker'] = prompt(
                 text="Broker (a.k.a. Transport) URI",
                 default=payload,
@@ -23,6 +23,33 @@ class Celery(Component):
                 )
 
         pinboard.post('service_dependency', self.context['broker'])
+
+        payload = {
+            'key': 'CELERY_BROKER_URL',
+            'value': self.context['broker'],
+            'type': 'string',
+            'component_type': self.component_type,
+            'component_name': self.name,
+            'description': "Transport protocol for message routing",
+            'environment': self.context['environment'],
+        }
+
+        pinboard.post('global_setting', payload)
+
+    def environments(self, payload, pinboard, prompt):
+        self.context['environments'] = payload
+
+    def environment(self, payload, pinboard, prompt):
+        if not 'environments' in self.context:
+            raise pinboard.PinNotProcessed
+
+        options = tuple(zip(self.context['environments'] + ['*'], self.context['environments'] + ['This is a core setting for all environments']))
+
+        self.context['environment'] = prompt(
+            text="Which environment should this setting be applied to?",
+            default=payload,
+            options=options,
+            )
 
     def version(self, payload, pinboard, prompt):
         self.context['version'] = prompt(
@@ -33,27 +60,8 @@ class Celery(Component):
 
         pinboard.post('python_dependency', 'celery==%s' % self.context['version'])
 
-    def environment(self, payload, pinboard, prompt):
-        if not 'broker' in self.context:
-            raise pinboard.PinNotProcessed
-
-        self.context['tier'] = prompt(
-                default=payload,
-                )
-
-        pinboard.post(
-                'global_setting',
-                {
-                    'description': "Transport protocol for message routing",
-                    'data': {'CELERY_BROKER_URL': "'%s'" % self.context['broker']},
-                    'tier': self.context['tier'],
-                    'component_type': self.component_type,
-                    }
-                )
-
-
     def setup_file(self, payload, pinboard, prompt):
-        if not set(['project_slug', 'project_home']).issubset(self.context):
+        if not set(['project_identifier', 'project_home']).issubset(self.context):
             raise pinboard.PinNotProcessed
 
         def render_path(value):
@@ -67,28 +75,5 @@ class Celery(Component):
                 )
 
         self.files[self.context['setup_file']] = self.render(self.context, 'celery/celery.py.j2', out=None)
-
-
-    def retrigger(self, payload, pinboard, prompt):
-        response = prompt(
-                text="Configure another instance of this component?",
-                default=payload,
-                options: ['y','n']
-                )
-
-        if response == 'y':
-
-            self.context_stash.append(self.context.copy())
-
-            for action in reversed(self.actions):
-                if action in ('setup_file',):
-                    continue
-
-                pinboard.post(
-                        action,
-                        self.actions[action],
-                        position=pinboard.UPNEXT,
-                        handler_filter=lambda h: h is self,
-                        )
 
 

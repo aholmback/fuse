@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from fuse.components import Component
 from fuse.utils import edit
 from jinja2 import Template
-import hashlib
 import semantic_version
+import hashlib
 import re
 import six
 import os
@@ -22,28 +22,12 @@ class Django(Component):
         self.context['project_home'] = payload
 
     def global_setting(self, payload, pinboard, prompt):
-        """
-        Expected structure:
 
-        payload:
-            comment: section comment
-            identifier: section identifier (hash)
-            entries
-                key1: value1
-                key2: value2
+        self.context.setdefault('components_settings', {})
+        entry_identifier = ':'.join([payload['key'], payload['environment']])
+
+        self.context['components_settings'][entry_identifier] = payload
             
-        """
-
-        if 'settings_path' not in self.context:
-            raise pinboard.PinNotProcessed
-
-        this.context.setdefault('sections', {})
-        this.context['sections'][payload['identifier']] = {
-            'name': payload['name'],
-            'entries': payload['entries'],
-            }
-            
-
     def project_name(self, payload, pinboard, prompt):
         self.context['project_name'] = prompt(
             text="Human-friendly project name",
@@ -57,22 +41,37 @@ class Django(Component):
                 position=pinboard.UPNEXT,
                 )
 
-    def project_slug(self, payload, pinboard, prompt):
+    def project_identifier(self, payload, pinboard, prompt):
         if not 'project_name' in self.context:
             raise pinboard.PinNotProcessed
 
-        self.context['project_slug']  = prompt(
+        self.context['project_identifier']  = prompt(
             text="Project Slug",
             default=payload or re.sub('[^0-9a-zA-Z]+', '_', self.context['project_name'].lower()),
-            validators=['variable_name'],
+            validators=['identifier'],
         )
 
         pinboard.post(
-                'project_slug',
-                self.context['project_slug'],
-                handler_filter=lambda handler: handler is not self,
-                position=pinboard.UPNEXT,
-                )
+            'project_identifier',
+            self.context['project_identifier'],
+            handler_filter=lambda handler: handler is not self,
+            position=pinboard.FIRST,
+        )
+
+    def environments(self, payload, pinboard, prompt):
+        self.context['environments'] = prompt(
+            text="Comma-separated list of environment identifiers",
+            default=payload,
+            validators=['identifier_list'],
+            pre_validation_hook=lambda v: v.split(','),
+        )
+
+        pinboard.post(
+            'environments',
+            self.context['environments'],
+            handler_filter=lambda handler: handler is not self,
+            position=pinboard.FIRST,
+        )
 
     def version(self, payload, pinboard, prompt):
         self.context['version'] = prompt(
@@ -111,20 +110,20 @@ class Django(Component):
         self.add_file(payload, pinboard, prompt, 'manage_path')
 
     def add_file(self, payload, pinboard, prompt, context_identifier):
-        if not set(['project_template_root', 'project_slug', 'project_home']).issubset(self.context):
+        if not set(['project_template_root', 'project_identifier', 'project_home']).issubset(self.context):
             raise pinboard.PinNotProcessed
 
         source = self.context['project_template_root'] + payload['source']
         content = urlopen(source).read().decode('utf-8')
         target = os.path.join(
             self.context['project_home'],
-            payload['target'].format(project_slug=self.context['project_slug'])
+            payload['target'].format(project_identifier=self.context['project_identifier'])
         )
 
         self.context[context_identifier] = target
 
         self.files[target] = Template(content).render(
-            project_name=self.context['project_slug'],
+            project_name=self.context['project_identifier'],
             django_version=self.context['version'],
             docs_version='.'.join(self.context['version'].split('.')[:-1])
         )
@@ -137,10 +136,4 @@ class Django(Component):
                 'django/settings.py.j2',
                 out=None,
                 )
-
-
-
-
-
-
 

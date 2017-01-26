@@ -9,10 +9,9 @@ from cement.core.foundation import CementApp
 from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
 from cement.core.exc import CaughtSignal
-
+from fuse import lineups, __version__
 from fuse.utils import validators as validator_functions
 from fuse.utils import pinboards, json
-from fuse import lineups, __version__
 
 
 defaults = init_defaults('fuse')
@@ -243,10 +242,11 @@ class StartprojectController(CementBaseController):
         # If options is a list with elements, create a validator on the
         # fly and replace all other potential validators.
         if options is not None:
-            validators = [lambda v: v in options]
+            validators = [lambda v: v in [identifier for identifier, _ in options]]
+        else:
+            context['default'] = default
 
         context['validators'] = validator_descriptions
-        context['default'] = default
 
         # Set user input to default if confirm is disabled
         if self.app.pargs.confirm or default is None:
@@ -258,7 +258,17 @@ class StartprojectController(CementBaseController):
             context['user_input'] = user_input
             user_message = self.app.render(context, 'prompt.jinja2', out=None).strip()
 
-            user_input = input_fn(user_message) or default
+            user_input = input_fn(user_message)
+
+            # Try to translate user_input from option index to option identifier
+            if user_input is not None and options:
+                try:
+                    user_input = options[int(user_input)-1][0]
+                except (IndexError, ValueError):
+                    user_input = None
+
+            # If user_input is None, set it to default
+            user_input = user_input or default
 
             if user_input is not None:
                 user_input = pre_validation_hook(user_input)
