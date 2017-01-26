@@ -1,13 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-import re
-import os
-import hashlib
-import six
-from jinja2 import Template
-import semantic_version
 from fuse.components import Component
-from fuse.utils import edit
 from fuse.utils.files import FileFactory
+
+import six
+import os
+from jinja2 import Template
 
 if six.PY2:
     from urllib2 import urlopen, HTTPError
