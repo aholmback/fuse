@@ -55,7 +55,7 @@ class Virtualenv(Component):
 
             self.context_stash.append(self.context.copy())
 
-    def finalize(self):
+    def post_write(self):
         self.context_stash.append(self.context.copy())
         for context in self.context_stash:
             try:

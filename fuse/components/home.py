@@ -9,7 +9,6 @@ class Home(Component):
     def project_home(self, payload, pinboard, prompt):
 
         self.context['project_home'] = prompt(
-            load='directory',
             text="Project Home",
             default=payload or os.getcwd(),
             validators=['creatable_path','writable_directory','empty_directory'],
@@ -17,8 +16,8 @@ class Home(Component):
         )
 
         pinboard.post(
-                text="Project home",
-                self.context['project_home'],
+                action='project_home',
+                payload=self.context['project_home'],
                 handler_filter=lambda handler: handler is not self,
                 position=pinboard.FIRST,
                 )

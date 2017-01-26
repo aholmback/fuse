@@ -187,6 +187,9 @@ class StartprojectController(CementBaseController):
             # Check if pinboard has new pins
             new_pins = len(pinboard) - pinboard_length
 
+        # Run pre-write actions
+        for component in components:
+            component.pre_write()
 
         # Write to disk
         for component in components:
@@ -194,7 +197,7 @@ class StartprojectController(CementBaseController):
 
         # Run post-write actions
         for component in components:
-            component.finalize()
+            component.post_write()
 
     def prompt(
             self, load=None, text='', description='',
@@ -212,24 +215,13 @@ class StartprojectController(CementBaseController):
             post_validation_hook = lambda v: v
 
         # Context for template engine
-        # Fill in empty parameters from persistent storage if present
-        context = {}
-        try:
-            load = {} if load is None else json.get('prompts.json')[load]
-        except KeyError:
-            self.app.log.error(
-                "Couldn't load prompt `{prompt}`, set load=None or add it to pr"
-                "ompts.json.".format(prompt=load))
-            load = {}
+        context = {
+                'text': text,
+                'default': default,
+                'options': options,
+                'description': description,
+                }
 
-        context['text'] = text = text or load.get('text', None)
-        context['default'] = default = default or load.get('default', None)
-        context['options'] = options = options or load.get('options', None)
-
-        context['description'] = description = (
-            description or load.get('description', None))
-
-        validators = validators or load.get('validators', None)
 
         # Replace validator descriptors with actual functions
         if validators is None:

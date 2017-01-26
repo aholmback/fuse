@@ -96,7 +96,7 @@ class Component(object):
                     sender=self,
                     handler_filter=lambda handler: handler is self,
                     enforce=True,
-                    upnext=False,
+                    position=pinboard.LAST,
                     )
 
     def configure(self, pinboard, prompt, last_chance=False):
@@ -155,6 +155,9 @@ class Component(object):
 
         return all_pins_processed
 
+    def pre_write(self):
+        pass
+
     def write(self):
         for target in self.files:
 
@@ -166,7 +169,7 @@ class Component(object):
             with open(target, 'w') as fp:
                 fp.write(self.files[target])
 
-    def finalize(self):
+    def post_write(self):
         pass
 
     def __str__(self):

@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse.components import Component
+from fuse.utils import edit
 from jinja2 import Template
+import hashlib
 import semantic_version
 import re
 import six
@@ -20,41 +22,27 @@ class Django(Component):
         self.context['project_home'] = payload
 
     def global_setting(self, payload, pinboard, prompt):
-        if 'settings_path_prefix' not in self.context:
+        """
+        Expected structure:
+
+        payload:
+            comment: section comment
+            identifier: section identifier (hash)
+            entries
+                key1: value1
+                key2: value2
+            
+        """
+
+        if 'settings_path' not in self.context:
             raise pinboard.PinNotProcessed
 
-        target = '{settings_path_prefix}/{tier}.py'.format(
-                settings_path_prefix=self.context['settings_path_prefix'],
-                tier=payload['tier'],
-                )
-
-        settings_header = '"""\nSettings for tier `{tier}`\n"""\n\n'.format(tier=payload['tier'])
-        self.files.setdefault(target, settings_header)
-
-        section_identifier = "## Section {component_type}\n".format(
-                component_type=payload['component_type'].replace('_', ' ').title()
-                )
-
-        if section_identifier not in self.files[target]:
-            self.files[target] += section_identifier
-
-        self.files[target] = self.files[target].replace(
-                section_identifier, 
-                section_identifier + "\n{settings_to_add}",
-                )
-
-        settings_to_add = ['# {description}'.format(description=payload['description'])]
-
-        for key in payload['data']:
-            settings_to_add.append("{key}: {value}".format(
-                key=key,
-                value=payload['data'][key],
-                ))
-
-        self.files[target] = self.files[target].format(
-                settings_to_add='\n'.join(settings_to_add),
-                )
-
+        this.context.setdefault('sections', {})
+        this.context['sections'][payload['identifier']] = {
+            'name': payload['name'],
+            'entries': payload['entries'],
+            }
+            
 
     def project_name(self, payload, pinboard, prompt):
         self.context['project_name'] = prompt(
@@ -108,31 +96,21 @@ class Django(Component):
         ).format(version=self.context['version'])
 
     def settings_file(self, payload, pinboard, prompt):
-        if not 'project_home' in self.context:
-            raise pinboard.PinNotProcessed
-
-        target = os.path.join(
-            self.context['project_home'],
-            payload['target'].format(project_slug=self.context['project_slug'])
-        )
-
-        self.context['settings_path_prefix'] = os.path.dirname(target) + '/'
-
-        self.add_file(payload, pinboard, prompt)
+        self.add_file(payload, pinboard, prompt, 'settings_path')
 
     def init_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt)
+        self.add_file(payload, pinboard, prompt, 'project_init_path')
 
     def urls_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt)
+        self.add_file(payload, pinboard, prompt, 'root_urls_path')
 
     def wsgi_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt)
+        self.add_file(payload, pinboard, prompt, 'wsgi_path')
 
     def manage_file(self, payload, pinboard, prompt):
-        self.add_file(payload, pinboard, prompt)
+        self.add_file(payload, pinboard, prompt, 'manage_path')
 
-    def add_file(self, payload, pinboard, prompt):
+    def add_file(self, payload, pinboard, prompt, context_identifier):
         if not set(['project_template_root', 'project_slug', 'project_home']).issubset(self.context):
             raise pinboard.PinNotProcessed
 
@@ -143,9 +121,26 @@ class Django(Component):
             payload['target'].format(project_slug=self.context['project_slug'])
         )
 
+        self.context[context_identifier] = target
+
         self.files[target] = Template(content).render(
             project_name=self.context['project_slug'],
             django_version=self.context['version'],
             docs_version='.'.join(self.context['version'].split('.')[:-1])
         )
+
+    def pre_write(self):
+        self.context['django_settings'] = self.files[self.context['settings_path']]
+
+        self.files[self.context['settings_path']] = self.render(
+                self.context,
+                'django/settings.py.j2',
+                out=None,
+                )
+
+
+
+
+
+
 
