@@ -1,6 +1,4 @@
-{% if user_input is not none %}
-{% for validator in validators %}+ {{validator}}
-{% endfor %}{% endif %}
+{% if invalid_input_message %}+ {{invalid_input_message}}{% endif %}
 {{ text or "Enter value" }} {% if options %}{% for identifier, text in options %}
 {{ loop.index }}) {{ text }} {% if identifier == default %}(default){% endif %}{% endfor %}
 {% elif default %}(default: {{ default }}){% endif %}{% if options %}{% endif %}:

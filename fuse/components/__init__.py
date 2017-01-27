@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse.utils.files import FileFactory
 
+class PinNotProcessed(Exception):
+    pass
+
 class Component(object):
     """
     Abstract base class for components
@@ -36,7 +39,8 @@ class Component(object):
 
     """
 
-    def __init__(self, name, log, render):
+
+    def __init__(self, name, log, render, prompt, post_pin):
 
         # Name of component module (file name without .py)
         self.name = name
@@ -65,20 +69,20 @@ class Component(object):
         # be appended to context stash before it gets overwritten.
         self.context_stash = []
 
-        # Files that will be written to disk during write().
-        # Key: Target path
-        # Value: File content
-        #
-        # If target path ends with a dash and content is null,
-        # only an empty directory will be created.
-        self.files = {}
-
         # Contains initial actions added during setup(). Useful
         # when retriggering a new instance for the component.
         # Key: function name
         # Value: method payload (will end up in `payload` argument
         self.actions = None
 
+        # Static function for prompting user
+        self.prompt = prompt
+
+        # Excepion for actions that failed processing a pin
+        self.PinNotProcessed = PinNotProcessed
+
+        # Static function for posting pins
+        self.post_pin = post_pin
 
     def pre_setup(self):
         pass
@@ -105,7 +109,7 @@ class Component(object):
             except ValueError:
                 stash_index = 0
 
-            pinboard.post(
+            self.post_pin(
                     action=action,
                     payload=payload,
                     sender=self,
@@ -117,7 +121,7 @@ class Component(object):
     def post_setup(self):
         pass
 
-    def configure(self, pinboard, prompt, last_chance=False):
+    def configure(self, pinboard, last_chance=False):
         """
         Process pins from pinboard. Return true if all pins were processed
         (i.e. none was deferred).
@@ -142,7 +146,13 @@ class Component(object):
                 continue
 
             try:
-                getattr(self, pin.action)(payload=pin.payload, pinboard=pinboard, prompt=prompt)
+                try:
+                    getattr(self, pin.action)(payload=pin.payload)
+                except TypeError:
+                    self.log.error("component {component} could not invoke action `{action}`".format(
+                        component=self, action=pin.action))
+                    raise
+
                 self.processed_pins.append(pin_id)
             except EOFError:
                 print('EOF')
@@ -153,7 +163,7 @@ class Component(object):
                         action=pin.action,
                     ))
                 continue
-            except pinboard.PinNotProcessed:
+            except self.PinNotProcessed:
                 all_pins_processed = False
                 self.log.info(
                     "Pin `{handler}/{action}` deferred (last_chance={last_chance})".format(

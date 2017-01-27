@@ -20,10 +20,10 @@ class Django(Component):
         self.project_template_root = 'https://raw.githubusercontent.com/django/django/{version}/django/conf/project_template/'
 
 
-    def project_home(self, payload, pinboard, prompt):
+    def project_home(self, payload):
         self.context['project_home'] = payload
 
-    def global_setting(self, payload, pinboard, prompt):
+    def global_setting(self, payload):
 
         self.context.setdefault('components_settings', {})
         entry_identifier = ':'.join([payload['key'], payload['environment']])
@@ -50,85 +50,84 @@ class Django(Component):
 
         self.context['components_settings'][entry_identifier] = payload
             
-    def project_name(self, payload, pinboard, prompt):
-        self.context['project_name'] = prompt(
+    def project_name(self, payload):
+        self.context['project_name'] = self.prompt(
             text="Human-friendly project name",
             default=payload,
         )
 
-        pinboard.post(
+        self.post_pin(
                 'project_name',
                 self.context['project_name'],
                 handler_filter=lambda handler: handler is not self,
-                position=pinboard.UPNEXT,
+                position=1,
                 )
 
-    def project_identifier(self, payload, pinboard, prompt):
+    def project_identifier(self, payload):
         if not 'project_name' in self.context:
-            raise pinboard.PinNotProcessed
+            raise self.PinNotProcessed
 
-        self.context['project_identifier']  = prompt(
+        self.context['project_identifier']  = self.prompt(
             text="Project Slug",
             default=payload or re.sub('[^0-9a-zA-Z]+', '_', self.context['project_name'].lower()),
             validators=['identifier'],
         )
 
-        pinboard.post(
+        self.post_pin(
             'project_identifier',
             self.context['project_identifier'],
             handler_filter=lambda handler: handler is not self,
-            position=pinboard.FIRST,
+            position=0,
         )
 
-    def project_environments(self, payload, pinboard, prompt):
-        self.context['project_environments'] = prompt(
+    def project_environments(self, payload):
+        self.context['project_environments'] = self.prompt(
             text="Comma-separated list of environment identifiers",
             default=payload,
             validators=['identifier_list'],
             pre_validation_hook=lambda v: v.split(','),
         )
 
-        pinboard.post(
+        self.post_pin(
             'project_environments',
             self.context['project_environments'],
             handler_filter=lambda handler: handler is not self,
-            position=pinboard.FIRST,
+            position=0,
         )
 
-    def version(self, payload, pinboard, prompt):
-        self.context['version'] = prompt(
+    def version(self, payload):
+        self.context['version'] = self.prompt(
             text="Version (semantic)",
-            load='semantic_version',
             default=payload,
             validators=['semantic_version'],
         )
 
-        pinboard.post('python_dependency', 'django==%s' % self.context['version'])
+        self.post_pin('python_dependency', 'django==%s' % self.context['version'])
 
 
-    def project_template_root(self, payload, pinboard, prompt):
+    def project_template_root(self, payload):
         if not 'version' in self.context:
-            raise pinboard.PinNotProcessed
+            raise self.PinNotProcessed
 
-        self.context['project_template_root'] = prompt(
+        self.context['project_template_root'] = self.prompt(
             text="Project template root",
             default=payload,
             validators=['url'],
         ).format(version=self.context['version'])
 
-    def settings_file(self, payload, pinboard, prompt):
+    def settings_file(self, payload):
         self.add_file(payload, 'settings', 'project_name/settings.py-tpl')
 
-    def init_file(self, payload, pinboard, prompt):
+    def init_file(self, payload):
         self.add_file(payload, 'project_init', 'project_name/__init__.py-tpl')
 
-    def urls_file(self, payload, pinboard, prompt):
+    def urls_file(self, payload):
         self.add_file(payload, 'urls', 'project_name/urls.py-tpl')
 
-    def wsgi_file(self, payload, pinboard, prompt):
+    def wsgi_file(self, payload):
         self.add_file(payload, 'wsgi', 'project_name/wsgi.py-tpl')
 
-    def manage_file(self, payload, pinboard, prompt):
+    def manage_file(self, payload):
         self.add_file(payload, 'manage', 'manage.py-tpl')
 
     def add_file(self, path, identifier, template):

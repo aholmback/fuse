@@ -6,23 +6,23 @@ class Celery(Component):
 
     component_type = 'taskrunner'
 
-    def project_home(self, payload, pinboard, prompt):
+    def project_home(self, payload):
         self.context['project_home'] = payload
 
-    def project_identifier(self, payload, pinboard, prompt):
+    def project_identifier(self, payload):
         self.context['project_identifier'] = payload
 
-    def broker(self, payload, pinboard, prompt):
+    def broker(self, payload):
         if not 'environment' in self.context:
-            raise pinboard.PinNotProcessed
+            raise self.PinNotProcessed
 
-        self.context['broker'] = prompt(
+        self.context['broker'] = self.prompt(
                 text="Broker (a.k.a. Transport) URI",
                 default=payload,
                 validators=['url'],
                 )
 
-        pinboard.post('service_dependency', self.context['broker'])
+        self.post_pin('service_dependency', self.context['broker'])
 
         payload = {
             'key': 'CELERY_BROKER_URL',
@@ -34,43 +34,43 @@ class Celery(Component):
             'environment': self.context['environment'],
         }
 
-        pinboard.post('global_setting', payload)
+        self.post_pin('global_setting', payload)
 
-    def project_environments(self, payload, pinboard, prompt):
+    def project_environments(self, payload):
         self.context['project_environments'] = payload
 
-    def environment(self, payload, pinboard, prompt):
+    def environment(self, payload):
         if not 'project_environments' in self.context:
-            raise pinboard.PinNotProcessed
+            raise self.PinNotProcessed
 
         options = tuple(zip(
             self.context['project_environments'] + ['*'],
             self.context['project_environments'] + ["This is a core setting for all environments"],
             ))
 
-        self.context['environment'] = prompt(
+        self.context['environment'] = self.prompt(
             text="Which environment should this setting be applied to?",
             default=payload,
             options=options,
             )
 
-    def version(self, payload, pinboard, prompt):
-        self.context['version'] = prompt(
+    def version(self, payload):
+        self.context['version'] = self.prompt(
                 text="Version",
                 default=payload,
                 validators=['semantic_version'],
                 )
 
-        pinboard.post('python_dependency', 'celery==%s' % self.context['version'])
+        self.post_pin('python_dependency', 'celery==%s' % self.context['version'])
 
-    def setup_file(self, payload, pinboard, prompt):
+    def setup_file(self, payload):
         if not set(['project_identifier', 'project_home']).issubset(self.context):
-            raise pinboard.PinNotProcessed
+            raise self.PinNotProcessed
 
         def render_path(value):
             return value.format(**self.context)
 
-        self.context['setup_file'] = prompt(
+        self.context['setup_file'] = self.prompt(
                 text="Location for celery.py",
                 default=payload,
                 validators=['available_path', 'creatable_path'],

@@ -1,18 +1,16 @@
 
-class PinNotProcessed(Exception):
-    pass
-
 class NoActionError(Exception):
     pass
 
 class Pinboard(object):
 
-    FIRST, UPNEXT, LAST = range(3)
+    FIRST = 0
+    UPNEXT = 1
+    LAST = -1
 
     def __init__(self):
         self.pin_id = None
         self.pins = []
-        self.PinNotProcessed = PinNotProcessed
         self.NoActionError = NoActionError
         self.next_index = 0
 

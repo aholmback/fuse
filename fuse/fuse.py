@@ -1,6 +1,5 @@
 # unicode_literals messes up with Cement's type checking.
 from __future__ import absolute_import, division, print_function
-import six
 import os
 import sys
 import importlib
@@ -10,8 +9,8 @@ from cement.utils.misc import init_defaults
 from cement.core.controller import CementBaseController, expose
 from cement.core.exc import CaughtSignal
 from fuse import lineups, __version__
-from fuse.utils import validators as validator_functions
-from fuse.utils import pinboards, json
+from fuse.utils import pinboards, json, prompting
+from fuse.utils.files import FileFactory
 
 
 defaults = init_defaults('fuse')
@@ -21,7 +20,6 @@ defaults['fuse']['debug'] = False
 def run():
     with Fuse() as fuse:
         fuse.run()
-
 
 class BaseController(CementBaseController):
     class Meta:
@@ -111,10 +109,19 @@ class StartprojectController(CementBaseController):
                     )
                 sys.exit(1)
 
+            component_prompt = prompting.get_prompter(
+                render=self.app.render,
+                log=self.app.log,
+                confirm=self.app.pargs.confirm
+            )
+
+            # Instantiates Component
             component = getattr(component_module, component_class_name)(
                 name=component_module_name,
                 log=self.app.log,
                 render=self.app.render,
+                prompt=component_prompt,
+                post_pin=pinboard.post,
             )
 
             component.pre_setup()
@@ -165,7 +172,6 @@ class StartprojectController(CementBaseController):
                 try:
                     component_configured = component.configure(
                             pinboard,
-                            prompt=self.prompt,
                             last_chance=last_chance,
                             )
                 except CaughtSignal as e:
@@ -201,82 +207,6 @@ class StartprojectController(CementBaseController):
         for component in components:
             component.post_write()
 
-    def prompt(
-            self, load=None, text='', description='',
-            validators=None, options=None,  default=None,
-            pre_validation_hook=None, post_validation_hook=None):
-
-        # Set input function
-        input_fn = raw_input if six.PY2 else input
-
-        # Set pre/post validation hook to return-input lambdas if None
-        if pre_validation_hook is None:
-            pre_validation_hook = lambda v: v
-
-        if post_validation_hook is None:
-            post_validation_hook = lambda v: v
-
-        # Context for template engine
-        context = {
-                'text': text,
-                'default': default,
-                'options': options,
-                'description': description,
-                }
-
-
-        # Replace validator descriptors with actual functions
-        if validators is None:
-            validators = validator_descriptions = []
-        else:
-            try:
-                validators = [getattr(validator_functions, validator)
-                              for validator in validators]
-            except AttributeError:
-                self.app.log.error(
-                    "Validator `{validator}` was declared in lineup but doesn't"
-                    " exist in validator module.".format(validator=validator)
-                )
-                validators = []
-
-            validator_descriptions = [validator.__doc__.strip() for validator
-                                      in validators if validator.__doc__]
-
-        # If options is a list with elements, create a validator on the
-        # fly and replace all other potential validators.
-        if options is not None:
-            validators = [lambda v: v in [identifier for identifier, _ in options]]
-        else:
-            context['default'] = default
-
-        context['validators'] = validator_descriptions
-
-        # Set user input to default if confirm is disabled
-        if self.app.pargs.confirm or default is None:
-            user_input = None
-        else:
-            user_input = pre_validation_hook(default)
-
-        while user_input is None or not all(validator(user_input) for validator in validators):
-            context['user_input'] = user_input
-            user_message = self.app.render(context, 'prompt.j2', out=None).strip()
-
-            user_input = input_fn(user_message)
-
-            # Try to translate user_input from option index to option identifier
-            if user_input is not None and options:
-                try:
-                    user_input = options[int(user_input)-1][0]
-                except (IndexError, ValueError):
-                    user_input = None
-
-            # If user_input is None, set it to default
-            user_input = user_input or default
-
-            if user_input is not None:
-                user_input = pre_validation_hook(user_input)
-
-        return post_validation_hook(user_input)
 
 class LineupController(CementBaseController):
     class Meta:

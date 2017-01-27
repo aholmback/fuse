@@ -14,7 +14,7 @@
         "manage_file": "{project_home}/manage.py"
     },
     "virtualenv": {
-        "prompt": "(env) ",
+        "label": "(env) ",
         "python_distribution": "3",
         "directory": "env/",
         "retrigger": false

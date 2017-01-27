@@ -2,23 +2,21 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from fuse.components import Component
 import os
 
-class Home(Component):
+component_type = 'global_parameter'
 
-    component_type = 'global_parameter'
+def project_home(payload):
 
-    def project_home(self, payload, pinboard, prompt):
+    self.context['project_home'] = prompt(
+        text="Project Home",
+        default=payload or os.getcwd(),
+        validators=['creatable_path','writable_directory','empty_directory'],
+        pre_validation_hook=os.path.expanduser,
+    )
 
-        self.context['project_home'] = prompt(
-            text="Project Home",
-            default=payload or os.getcwd(),
-            validators=['creatable_path','writable_directory','empty_directory'],
-            pre_validation_hook=os.path.expanduser,
-        )
-
-        pinboard.post(
-                action='project_home',
-                payload=self.context['project_home'],
-                handler_filter=lambda handler: handler is not self,
-                position=pinboard.FIRST,
-                )
+    post_pin(
+            action='project_home',
+            payload=self.context['project_home'],
+            handler_filter=lambda handler: handler is not self,
+            position=0,
+            )
 

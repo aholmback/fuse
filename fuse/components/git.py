@@ -7,11 +7,11 @@ class Git(Component):
 
     component_type = 'version_control_system'
 
-    def project_home(self, payload, pinboard, prompt):
+    def project_home(self, payload):
         self.context['project_home'] = payload
         self.context['gitignore'] = os.path.join(self.context['project_home'], '.gitignore')
 
-    def no_version_control(self, payload, pinboard, prompt):
+    def no_version_control(self, payload):
         if 'project_home' not in self.context:
             raise pinboard.PnNotProcessed
 

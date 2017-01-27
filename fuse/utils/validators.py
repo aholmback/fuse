@@ -35,6 +35,9 @@ def creatable_path(value):
     """
     Directory must exist or be possible to create
     """
+    if value[0] != '/':
+        return False
+
     def exists(path):
         if os.path.exists(path):
             return path
