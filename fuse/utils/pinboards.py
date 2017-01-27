@@ -1,5 +1,19 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+from fuse.utils.decorators import static_vars
+import fuse
+
+@static_vars(pinboards={})
+def get_pinboard(identifier):
+    # (Instantiate) and return Pinboard: One object per name.
+    if identifier not in get_pinboard.pinboards:
+        get_pinboard.pinboards[identifier] = Pinboard()
+
+    return get_pinboard.pinboards[identifier]
 
 class NoActionError(Exception):
+    pass
+
+class PinNotProcessed(Exception):
     pass
 
 class Pinboard(object):
@@ -13,6 +27,7 @@ class Pinboard(object):
         self.pins = []
         self.NoActionError = NoActionError
         self.next_index = 0
+        self.visitors = []
 
     def get_pin_id(self):
         if self.pin_id is None:
@@ -22,9 +37,7 @@ class Pinboard(object):
         self.pin_id += 1
         return self.pin_id
 
-
-
-    def post(self, action, payload, sender=None, handler_filter=None,
+    def post(self, action, payload, sender=None, visitor_filter=None,
             enforce=False, position=None):
 
         # Set default position constant (should always be LAST)
@@ -38,12 +51,25 @@ class Pinboard(object):
             self.LAST: len(self.pins),
         }[position]
 
-        # Create pin and generate pin_id
-        pin = Pin(action, payload, sender, handler_filter, enforce)
+        if index < self.next_index:
+            self.next_index += 1
+
         pin_id = self.get_pin_id()
+
+        # Create pin and generate pin_id
+        pin = Pin(pin_id, action, payload, sender, visitor_filter, enforce)
+
 
         # Insert pin+pin_id at given index
         self.pins.insert(index, (pin_id, pin))
+
+        fuse.log.info("posting pin {pin} at {index} (next/last: {next_index}/{last}) (enforce={enforce})".format(
+            index=index,
+            next_index=self.next_index,
+            pin=pin,
+            enforce=enforce,
+            last=len(self.pins)-1,
+        ))
 
         return pin_id
 
@@ -61,31 +87,18 @@ class Pinboard(object):
         else:
             return pin_id, pin
 
-    def __len__(self):
-        return len(self.pins)
-
-
 class Pin(object):
-    def __init__(self, action, payload, sender=None, handler_filter=None, enforce=False):
+    def __init__(self, identifier, action, payload, sender=None, visitor_filter=None, enforce=False):
+        self.identifier = identifier
         self.action = action
         self.payload = payload
         self.sender = sender
-        self.handler_filter = (lambda handler: True) if handler_filter is None else handler_filter
+        self.visitor_filter = (lambda visitor: True) if visitor_filter is None else visitor_filter
         self.enforce = enforce
 
-    def is_recipient(self, handler):
-        if not self.handler_filter(handler):
-            return False
+    def __str__(self):
+        return "{action} ({identifier})".format(action=self.action, identifier=self.identifier)
 
-        if not hasattr(handler, self.action):
-            if not self.enforce:
-                return False
-            else:
-                raise NoActionError(
-                    "Action `{action}` not found in handler `{handler}`".format(
-                        action=self.action,
-                        handler=handler)
-                )
-
-        return True
+    def __unicode__(self):
+        return "{action} ({identifier})".format(action=self.action, identifier=self.identifier)
 

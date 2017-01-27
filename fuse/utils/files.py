@@ -1,6 +1,9 @@
 import os
 from fuse.utils.decorators import static_vars
 
+def get_files():
+    return FileFactory.files
+
 @static_vars(files={})
 def FileFactory(component, identifier, *args, **kwargs):
 

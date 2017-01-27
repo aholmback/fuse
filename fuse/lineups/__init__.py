@@ -26,5 +26,3 @@ def ls(filter_function=None):
 
     return filter(filter_function, lineups)
 
-def get(lineup_name):
-    return json.get('lineups/%s.json' % lineup_name)
