@@ -1,5 +1,7 @@
 import os
 from fuse.utils.decorators import static_vars
+from cement.core.exc import FrameworkError
+import fuse
 
 def get_files():
     return FileFactory.files
@@ -19,13 +21,30 @@ class File(object):
     def __init__(self, component, identifier, *args, **kwargs):
         self.component = component
         self.identifier = identifier
+        self.render = None
+        self.path = None
+        self.context = None
+        self.template = self.get_default_template()
+
         self.setup(*args, **kwargs)
 
-    def setup(self, render, path, context, template=None):
-        self.render = render
-        self.path = path
-        self.context = context
-        self.template = template
+    def setup(self, render=None, path=None, context=None, template=None, write=True):
+        self.render = render or self.render
+        self.path = path or self.path
+        self.context = context or self.context
+        self.template = template or self.template
+        self.do_write = write or self.do_write
+
+        try:
+            self.content = self.render(self.context, self.template, out=None)
+        except FrameworkError:
+            fuse.log.error("couldn't load template `{template}` for file `{identifier}`".format(
+                template=self.template,
+                identifier=self.identifier,
+            ))
+            raise
+
+        self.path = self.path.format(**self.context)
 
     def get_default_template(self):
         return os.path.join(self.component, '{file_name}.j2'.format(
@@ -33,18 +52,16 @@ class File(object):
             ))
 
     def write(self):
-        template = self.template or self.get_default_template()
-        path = self.path.format(**self.context)
-        content = self.render(self.context, template, out=None)
-
+        if not self.do_write:
+            return
 
         try:
-            os.makedirs(os.path.dirname(path))
+            os.makedirs(os.path.dirname(self.path))
         except OSError:
             pass
 
-        with open(path, 'w') as fp:
-            fp.write(content)
+        with open(self.path, 'w') as fp:
+            fp.write(self.content)
 
 
 

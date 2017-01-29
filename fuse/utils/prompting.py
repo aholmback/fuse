@@ -12,6 +12,8 @@ def prompt(
     """
     Present an informative message to the user and return input from user
     """
+    # Prompt confirmation on defaults
+    confirm = fuse.settings['confirm']
 
     # Set pre/post validation hook to return-input lambdas if None
     if pre_validation_hook is None:
@@ -47,7 +49,7 @@ def prompt(
 
     def read_input():
         # Return default value if confirm is False and default is not None
-        if fuse.settings['confirm'] is False and default is not None:
+        if confirm is False and default is not None:
             return default
 
         user_message = fuse.render(context, 'prompt.j2', out=None).strip()
@@ -57,7 +59,7 @@ def prompt(
 
     def map_input(user_input):
         # Assumption: If a default value exists, it is already mapped
-        if default is not None and user_input in ('', None):
+        if user_input in (default, '', None):
             return default
 
         if options:
@@ -78,6 +80,7 @@ def prompt(
         for validator in validators:
             if not validator(user_input):
                 context['invalid_input_message'] = validator.__doc__.strip()
+                confirm = True
                 raise InvalidInputError
 
         return post_validation_hook(user_input)
@@ -98,8 +101,13 @@ def prompt(
             fuse.log.info("user input converted to `{user_input}` (by input validation)".format(
             user_input=user_input))
 
+            # Reset confirm to default behavior
+            confirm = fuse.settings['confirm']
+
             return user_input
 
         except InvalidInputError:
-            pass
+            # Make sure user is prompted if a default was invalid
+            confirm = True
+
 

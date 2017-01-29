@@ -1,8 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import os
+import sys
 import importlib
 import json
 import collections
+import inflection
 from cement.core.exc import CaughtSignal
 from fuse.utils import files, pinboards
 import fuse
@@ -15,12 +17,13 @@ class Lineup(object):
     """
 
     def __init__(self, configuration):
+
+        # Components are constitutional
+        self.components = []
+
         # Parse configuration
         # Accept filename (without extension) as source
         # TODO: Implement http and local path
-
-        self.components = []
-
         configuration_source = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             'lineups',
@@ -32,20 +35,13 @@ class Lineup(object):
 
     def fuse(self):
         """
-        Single point entry.
-
-        Takes: Some json lineup
-        Gives: A configured set of components
+        Fuse is alias for read->invoke->write (single point entry)
         """
         self.read()
         self.invoke()
         self.write()
 
     def read(self):
-        self.load_pinboard()
-        self.load_components()
-
-    def load_pinboard(self):
         # Post all actions in configuration to pinboard
         # Don't load the components
         pinboard = pinboards.get_pinboard('components')
@@ -66,7 +62,7 @@ class Lineup(object):
 
                 # Closure cus component_name is reassigned
                 def get_visitor_filter(component_name):
-                    return lambda visitor: visitor.endswith(component_name)
+                    return lambda visitor: visitor.name == component_name
 
                 pinboard.post(
                         action=action,
@@ -77,7 +73,6 @@ class Lineup(object):
                         position=pinboard.LAST,
                         )
 
-    def load_components(self):
         # Map all component identifiers to component types.
         # Component types will probably load their module.
 
@@ -86,7 +81,11 @@ class Lineup(object):
 
     
     def invoke(self):
-        # Invoke components functions until no new pins are added to the pinboard
+        # Invoke component functions until no new pins are added to the pinboard
+
+        # Give components a heads up before processing pinboard
+        for component in self.components:
+            component.pre_process()
 
         pinboard = pinboards.get_pinboard('components')
         
@@ -123,61 +122,63 @@ class Lineup(object):
 
             # Configure all components in defined order.
             for component in self.components:
-                try:
-                    component_processed = component.invoke(last_chance=last_chance)
-                except CaughtSignal as e:
-                    print(e)
-                    fuse.log.info("Exit")
-                    sys.exit(1)
-
-                fuse.log.info(
-                        "Invoked component `{component}` (processed={processed})".format(
-                            component=component.name,
-                            processed=component_processed,
-                            ))
+                component_processed = component.invoke(last_chance=last_chance)
 
                 if component_processed:
                     fuse.log.info(
-                            "All current pins processed by component `{component}`".format(
+                            "all current pins processed by component `{component}`".format(
                                 component=component.name,
                                 ))
                 else:
+                    all_components_processed = False
                     fuse.log.info(
-                            "Not all current pins processed by component `{component}`".format(
+                            "not all current pins processed by component `{component}`".format(
                                 component=component.name,
                                 ))
-                    all_components_processed = False
 
 
             # Check if pinboard has new pins
             new_pins = len(pinboard.pins) - pinboard_length
 
-
     def write(self):
         # Write to disk
-        for f in files.get_files():
+        for identifier, f in files.get_files().items():
             f.write()
+
+        # Give components a heads up after processing pinboard
+        for component in self.components:
+            component.post_process()
 
 
 class Component(object):
     """
-    Load modules.
+    Load module
+    Instantiate class
     Invoke module functions (a.k.a. actions)
     """
 
     def __init__(self, name, actions):
-        # Load module
         self.actions = actions
         self.name = name
-        self.module = importlib.import_module('fuse.components.%s' % name)
         self.processed_pins = []
+
+        # Load module
+        self.module = importlib.import_module('fuse.components.%s' % name)
+
+        # Instantiate class
+        class_name = inflection.camelize(name)
+        self.instance = getattr(self.module, class_name)(self.name)
 
         fuse.log.info("component `{name}` loaded".format(name=name))
 
+    def pre_process(self):
+        self.instance.pre_process()
+
+    def post_process(self):
+        self.instance.post_process()
+
     def invoke(self, last_chance=False):
         """
-        Invoke functions sequentially in order.
-
         Return true if all pins were processed (i.e. none was deferred).
 
         `last_chance` is for making error tracking much easier when writing components.
@@ -195,35 +196,42 @@ class Component(object):
         component_processed = True
 
         while True:
+
+            # Get next pin, exit on StopIteration
             try:
                 pin_id, pin = pinboard.get(exclude=self.processed_pins)
             except StopIteration:
-                fuse.log.info("all functions invoked for `{name}`".format(name=self.name))
                 break
 
-            if not pin.visitor_filter(self.module.__name__):
+            # Verify that component is recipient (usually it is)
+            if not pin.visitor_filter(self.instance):
                 continue
 
-            try:
-                try:
-                    getattr(self.module, pin.action)(payload=pin.payload)
-                except AttributeError:
-                    if pin.enforce:
-                        fuse.log.error("pin `{pin}`: component {component} could not invoke action `{action}`".format(
-                            component=self,
-                            action=pin.action,
-                            pin=pin,
-                        ))
-                        raise
-                finally:
-                    fuse.log.error("pin `{pin}`: component {component} could not invoke action `{action}`".format(
-                            component=self,
-                            action=pin.action,
-                            pin=pin,
-                        ))
+            # Verify that component implements the action
+            if not hasattr(self.instance, pin.action):
+                if pin.enforce:
+                    fuse.log.error(
+                        "pin `{pin}` says enforce is True but component {component} doesn't implement action `{action}`".format(
+                        component=self,
+                        action=pin.action,
+                        pin=pin,
+                    ))
+                    sys.exit(1)
+                else:
+                    continue
 
+            # Invoke component action
+            try:
+                getattr(self.instance, pin.action)(payload=pin.payload)
                 self.processed_pins.append(pin_id)
-            except EOFError:
+            except TypeError: # Signature mismatch
+                fuse.log.error("pin `{pin}`: component {component} implement `{action}` but signature doesn't match".format(
+                    component=self,
+                    action=pin.action,
+                    pin=pin,
+                ))
+                raise
+            except EOFError: # User hit ctrl-D (EOF)
                 print('EOF')
                 component_processed = False
                 fuse.log.info(
@@ -232,15 +240,12 @@ class Component(object):
                         action=pin.action,
                     ))
                 continue
-            except pinboards.PinNotProcessed:
-                component_processed = False
-                fuse.log.info(
-                    "Pin `{module}/{action}` deferred (last_chance={last_chance})".format(
-                        module=self,
-                        action=pin.action,
-                        last_chance=last_chance,
-                    )
-                )
+            except CaughtSignal as e:
+                print(e)
+                fuse.log.info("Exit")
+                sys.exit(1)
+            except pinboards.PinNotProcessed: # Invoked method raised PinNotProcessed
+                # Components are not allowed to defer if last_chance is True
                 if last_chance:
                     fuse.log.error(
                             "Pin `{module}/{action}` could not be processed.".format(
@@ -249,6 +254,16 @@ class Component(object):
                                 )
                             )
                     raise
+
+                component_processed = False
+
+                fuse.log.info(
+                    "Pin `{module}/{action}` deferred (last_chance={last_chance})".format(
+                        module=self,
+                        action=pin.action,
+                        last_chance=last_chance,
+                    )
+                )
 
         return component_processed
 

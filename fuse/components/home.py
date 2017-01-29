@@ -1,27 +1,24 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
+from fuse.components import Component
 import os
-import fuse
-from fuse.utils import pinboards
-from fuse.utils.prompting import prompt
 
-pinboard = pinboards.get_pinboard('components')
+class Home(Component):
 
-component_type = 'global_parameter'
-context = {}
+    component_type = 'global_parameter'
 
-def project_home(payload):
+    def project_home(self, payload):
 
-    context['project_home'] = prompt(
-        text="Project Home",
-        default=payload or os.getcwd(),
-        validators=['creatable_path','writable_directory','empty_directory'],
-        pre_validation_hook=os.path.expanduser,
-    )
-
-    pinboard.post(
-        action='project_home',
-        payload=context['project_home'],
-        visitor_filter=lambda visitor: not visitor == __name__,
-        position=0,
+        self.context['project_home'] = self.prompt(
+            text="Project Home",
+            default=payload or os.getcwd(),
+            validators=['creatable_path','writable_directory','empty_directory'],
+            pre_validation_hook=os.path.expanduser,
         )
+
+        self.post(
+                action='project_home',
+                payload=self.context['project_home'],
+                visitor_filter=lambda handler: handler is not self,
+                position=self.FIRST,
+                )
 

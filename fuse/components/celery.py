@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse.components import Component
-from fuse.utils.files import FileFactory
 
 class Celery(Component):
 
@@ -22,7 +21,7 @@ class Celery(Component):
                 validators=['url'],
                 )
 
-        self.post_pin('service_dependency', self.context['broker'])
+        self.post('service_dependency', self.context['broker'])
 
         payload = {
             'key': 'CELERY_BROKER_URL',
@@ -34,7 +33,7 @@ class Celery(Component):
             'environment': self.context['environment'],
         }
 
-        self.post_pin('global_setting', payload)
+        self.post('global_setting', payload)
 
     def project_environments(self, payload):
         self.context['project_environments'] = payload
@@ -61,7 +60,7 @@ class Celery(Component):
                 validators=['semantic_version'],
                 )
 
-        self.post_pin('python_dependency', 'celery==%s' % self.context['version'])
+        self.post('python_dependency', 'celery==%s' % self.context['version'])
 
     def setup_file(self, payload):
         if not set(['project_identifier', 'project_home']).issubset(self.context):
@@ -77,7 +76,7 @@ class Celery(Component):
                 pre_validation_hook=render_path,
                 )
 
-        FileFactory(
+        self.files(
                 component=self.name,
                 identifier='celery.py',
                 path=self.context['setup_file'],

@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from fuse.components import Component
-from fuse.utils.files import FileFactory
 import os
 
 class Pip(Component):
@@ -19,7 +18,7 @@ class Pip(Component):
 
         self.context['python_dependencies'].append(payload)
 
-        FileFactory(
+        self.files(
                 component=self.name,
                 identifier='requirements.txt',
                 path=self.context['requirements_target'],
