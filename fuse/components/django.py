@@ -50,25 +50,29 @@ class Django(Component):
             context=self.context,
         )
 
-        # Update context
+        # If the setting is environment specific, wrap the key in env() and
+        # post the key/value-pair (+ environment identifier) to 'environment_variable' 
+        # Not that the environment variable is prefixed with project identifier (environment
+        # is a global namespace)
         if not payload['environment'] == '*':
-            path = os.path.join(
-                    self.context['project_home'],
-                    '.env.{environment}'.format(
-                        environment=payload['environment'],
-                        ),
-                    )
-
             env_key = '{prefix}_{key}'.format(
                     prefix=self.context['project_identifier'].upper(),
                     key=payload['key'],
                     )
 
-            payload['value'] = 'env(%s)' % env_key
+            self.post('environment_variable', {
+                'key': env_key,
+                'value': payload['value'],
+                'environment': payload['environment'],
+            })
+
+
+            payload['value'] = 'os.environ[\'%s\']' % env_key
             payload['type'] = 'function'
 
 
         self.context['components_settings'][entry_identifier] = payload
+        self.context['environment'] = payload['environment']
 
     def project_name(self, payload):
         self.context['project_name'] = self.prompt(
@@ -125,7 +129,23 @@ class Django(Component):
         self.post('python_dependency', 'django==%s' % self.context['version'])
 
     def settings_file(self, payload):
+        if 'project_environments' not in self.context:
+            raise self.PinNotProcessed
+
         self.add_file(payload, 'default_settings', 'project_name/settings.py-tpl')
+
+        settings_module = (payload
+                           .format(**self.context)[len(self.context['project_home']):-3]
+                           .strip('/')
+                           .replace('/', '.')
+                           )
+
+        for environment in self.context['project_environments']:
+            self.post('environment_variable', {
+                'key': 'DJANGO_SETTINGS_MODULE',
+                'value': settings_module,
+                'environment': environment,
+            })
 
     def init_file(self, payload):
         self.add_file(payload, 'default_project_init', 'project_name/__init__.py-tpl')

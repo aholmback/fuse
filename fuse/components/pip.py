@@ -10,7 +10,7 @@ class Pip(Component):
         self.context['project_home'] = payload
 
     def python_dependency(self, payload):
-        if 'requirements_target' not in self.context:
+        if 'requirements_path' not in self.context:
             raise self.PinNotProcessed
 
         if 'python_dependencies' not in self.context:
@@ -21,20 +21,25 @@ class Pip(Component):
         self.files(
                 component=self.name,
                 identifier='requirements.txt',
-                path=self.context['requirements_target'],
+                path=self.context['requirements_path'],
                 context=self.context,
                 render=self.render,
                 )
 
-
-    def requirements_target(self, payload):
+    def requirements_path(self, payload):
         if not 'project_home' in self.context:
             raise self.PinNotProcessed
 
-        self.context['requirements_target'] = self.prompt(
+        self.context['requirements_path'] = self.prompt(
             text="Target location for requirements",
             default=payload or os.path.join(self.context['project_home'], 'requirements.txt'),
-            pre_validation_hook=lambda v: os.path.join(self.context['project_home'], v),
+            pre_validation_hook=lambda v: v.format(**self.context),
             validators=['available_path','creatable_path'],
+        )
+
+        self.post(
+            'requirements_path',
+            self.context['requirements_path'],
+            visitor_filter=lambda visitor: visitor is not self,
         )
 

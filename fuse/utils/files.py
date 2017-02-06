@@ -1,6 +1,7 @@
 import os
 from fuse.utils.decorators import static_vars
 from cement.core.exc import FrameworkError
+from jinja2.exceptions import UndefinedError
 import fuse
 
 def get_files():
@@ -25,6 +26,7 @@ class File(object):
         self.path = None
         self.context = None
         self.template = self.get_default_template()
+        self.do_write = None
 
         self.setup(*args, **kwargs)
 
@@ -33,7 +35,7 @@ class File(object):
         self.path = path or self.path
         self.context = context or self.context
         self.template = template or self.template
-        self.do_write = write or self.do_write
+        self.do_write = self.do_write if write is None else write
 
         try:
             self.content = self.render(self.context, self.template, out=None)
@@ -43,8 +45,25 @@ class File(object):
                 identifier=self.identifier,
             ))
             raise
+        except UndefinedError:
+            fuse.log.error("file `{identifier}` didn't provide sufficient data for template `{template}` (context: {context})".format(
+                template=self.template,
+                identifier=self.identifier,
+                context=self.context,
+            ))
+            raise
 
-        self.path = self.path.format(**self.context)
+
+        try:
+            self.path = self.path.format(**self.context)
+        except KeyError:
+            fuse.log.error("file `{identifier}` from `{component}` did this (path={path}, context={context})".format(
+                identifier=self.identifier,
+                component=self.component,
+                path=self.path,
+                context=self.context,
+            ))
+            raise
 
     def get_default_template(self):
         return os.path.join(self.component, '{file_name}.j2'.format(
@@ -62,6 +81,5 @@ class File(object):
 
         with open(self.path, 'w') as fp:
             fp.write(self.content)
-
 
 

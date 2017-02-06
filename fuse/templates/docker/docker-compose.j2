@@ -1,0 +1,11 @@
+version: "2"
+services:
+{% for service in services %}
+  {{ service.name }}
+    image: {{ service.image }}:{{ service.tag }}
+  environment:
+    {% for variable in service.environment.variables %}
+    {{ variable.key }}: {{ variable.value }}
+    {% endfor %}
+  
+        

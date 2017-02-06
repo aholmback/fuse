@@ -49,7 +49,7 @@ class Lineup(object):
         for component_name, actions in self.configuration.items():
             for action, payload in actions.items():
                 # When an action is queued more than once an identifier must exist
-                # the prevent the action identifiers from clashing.
+                # that prevents the action identifiers from clashing.
                 # This will, by procedure, correspond to the index of the context
                 # stash that the action will write to.
                 # Nothing will be done to enforce the index of the context stash
@@ -199,7 +199,7 @@ class Component(object):
 
             # Get next pin, exit on StopIteration
             try:
-                pin_id, pin = pinboard.get(exclude=self.processed_pins)
+                pin_id, pin = pinboard.get_next(exclude=self.processed_pins)
             except StopIteration:
                 break
 
@@ -207,24 +207,27 @@ class Component(object):
             if not pin.visitor_filter(self.instance):
                 continue
 
-            # Verify that component implements the action
-            if not hasattr(self.instance, pin.action):
-                if pin.enforce:
-                    fuse.log.error(
-                        "pin `{pin}` says enforce is True but component {component} doesn't implement action `{action}`".format(
-                        component=self,
-                        action=pin.action,
-                        pin=pin,
-                    ))
-                    sys.exit(1)
-                else:
-                    continue
-
             # Invoke component action
             try:
                 getattr(self.instance, pin.action)(payload=pin.payload)
                 self.processed_pins.append(pin_id)
-            except TypeError: # Signature mismatch
+            except AttributeError:
+                # Method does not exist (exit on enforce==True, ignore otherwise)
+                if not hasattr(self.instance, pin.action):
+                    if pin.enforce is True:
+                        fuse.log.error(
+                            "pin `{pin}` says enforce is True but component `{component}` doesn't implement action `{action}`".format(
+                            component=self,
+                            action=pin.action,
+                            pin=pin,
+                        ))
+                        sys.exit(1)
+                    else:
+                        continue
+                else:
+                    # Invoked method raised AttributeError
+                    raise
+            except TypeError: # Signature mismatch (reraise)
                 fuse.log.error("pin `{pin}`: component {component} implement `{action}` but signature doesn't match".format(
                     component=self,
                     action=pin.action,
@@ -240,22 +243,23 @@ class Component(object):
                         action=pin.action,
                     ))
                 continue
-            except CaughtSignal as e:
+            except CaughtSignal as e: # User hit ctrl-C (SIGTERM)
                 print(e)
                 fuse.log.info("Exit")
                 sys.exit(1)
             except pinboards.PinNotProcessed: # Invoked method raised PinNotProcessed
+                component_processed = False
+
                 # Components are not allowed to defer if last_chance is True
                 if last_chance:
                     fuse.log.error(
-                            "Pin `{module}/{action}` could not be processed.".format(
-                                visitor=self,
+                            "Pin `{component}/{action}` could not be processed.".format(
+                                component=self,
                                 action=pin.action,
                                 )
                             )
                     raise
 
-                component_processed = False
 
                 fuse.log.info(
                     "Pin `{module}/{action}` deferred (last_chance={last_chance})".format(

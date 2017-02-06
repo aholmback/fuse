@@ -18,6 +18,7 @@ class Component(object):
         self.log = fuse.log
 
         self.FIRST = pinboard.FIRST
+        self.PinNotProcessed = pinboard.PinNotProcessed
 
     def pre_process(self):
         pass

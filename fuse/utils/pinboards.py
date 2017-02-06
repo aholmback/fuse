@@ -28,6 +28,7 @@ class Pinboard(object):
         self.NoActionError = NoActionError
         self.next_index = 0
         self.visitors = []
+        self.PinNotProcessed = PinNotProcessed
 
     def get_pin_id(self):
         if self.pin_id is None:
@@ -73,7 +74,7 @@ class Pinboard(object):
 
         return pin_id
 
-    def get(self, exclude):
+    def get_next(self, exclude):
         try:
             pin_id, pin = self.pins[self.next_index]
         except IndexError:
@@ -83,7 +84,7 @@ class Pinboard(object):
         self.next_index += 1
 
         if pin_id in exclude:
-            return self.get(exclude)
+            return self.get_next(exclude)
         else:
             return pin_id, pin
 

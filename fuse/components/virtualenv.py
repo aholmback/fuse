@@ -26,6 +26,8 @@ class Virtualenv(Component):
             default=payload,
             options=options,
         )
+    def requirements_path(self, payload):
+        self.context['requirements_path'] = payload
 
     def directory(self, payload):
         if not 'project_home' in self.context:
@@ -48,6 +50,9 @@ class Virtualenv(Component):
             self.post('no_version_control', os.path.join(local_dir, '*'))
 
     def retrigger(self, payload):
+        if 'project_home' not in self.context:
+            raise self.PinNotProcessed
+
         options = (
             (True, 'yes'),
             (False, 'no'),
@@ -71,6 +76,7 @@ class Virtualenv(Component):
     def post_process(self):
         self.context_stash.append(self.context.copy())
         for context in self.context_stash:
+            print(context)
             try:
                 os.makedirs(context['directory'])
             except OSError:
@@ -78,6 +84,16 @@ class Virtualenv(Component):
 
             command = "/usr/local/bin/virtualenv -p python{python_distribution} --quiet --prompt=\"{label}\" {directory}"
             command = command.format(**context)
+            self.log.info("system command: `{command}`".format(command=command))
 
+            os.system(command)
+
+            context['pip_binary'] = os.path.join(context['directory'], 'bin', 'pip')
+
+            command = "{pip_binary} install -r {requirements_path}"
+            context['requirements_path'] = context['requirements_path'].format(**context)
+            command = command.format(**context)
+
+            self.log.info("system command: `{command}`".format(command=command))
             os.system(command)
 

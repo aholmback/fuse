@@ -46,9 +46,8 @@ class StartprojectController(CementBaseController):
         stacked_type = 'nested'
         arguments = [
             (
-                ['-l', '--lineup'],
+                ['lineup'],
                 {
-                    'required': True,
                     'action': 'store',
                     'help': 'Name of the lineup',
                 }
@@ -86,46 +85,13 @@ class StartprojectController(CementBaseController):
         lineup = Lineup(self.app.pargs.lineup)
         lineup.fuse()
 
-class LineupController(CementBaseController):
-    class Meta:
-        label = 'lineup'
-        description = "List and inspect lineups"
-        stacked_on = 'base'
-        stacked_type = 'nested'
-        arguments = [
-            ( ['-l', '--lineup'], dict(action='store', help='Name of the lineup') ),
-        ]
-
-    @expose(hide=True)
-    def default(self):
-        self.app.render({}, 'default_lineup.j2')
-
-
-    @expose(help="Inspect lineup")
-    def inspect(self):
-        lineup_name = self.app.pargs.lineup
-        lineup = lineups.get(lineup_name)
-
-        context = {
-            'lineup': lineup,
-            'lineup_name': lineup_name,
-        }
-
-        self.app.render(context, 'lineup.j2')
-
-    @expose(help="List available lineups", aliases=['list'], aliases_only=True)
-    def show_all(self):
-        context = {
-            'lineups': lineups.ls(),
-        }
-        self.app.render(context, 'lineups.j2')
 
 class Fuse(CementApp):
     class Meta:
         label = 'fuse'
         config_defaults = defaults
         base_controller = 'base'
-        handlers = [BaseController, LineupController, StartprojectController]
+        handlers = [BaseController, StartprojectController]
         extensions = ['jinja2']
         output_handler = 'jinja2'
         template_module = 'fuse.templates'

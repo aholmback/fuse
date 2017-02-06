@@ -13,20 +13,23 @@
         "wsgi_file": "{project_home}/{project_identifier}/wsgi.py",
         "manage_file": "{project_home}/manage.py"
     },
+    "pip": {
+        "requirements_path": "{project_home}/requirements.txt"
+    },
     "virtualenv": {
         "label": "(env) ",
         "python_distribution": "3",
         "directory": "env/",
         "retrigger": false
     },
-    "pip": {
-        "requirements_target": "requirements.txt"
-    },
     "git": {
+    },
+    "dotenv": {
+        "dotenv_directory": "{project_home}"
     },
     "celery": {
 	"version": "4.0.2",
-	"setup_file": "{project_home}/{project_identifier}/taskrunner/celery.py",
+	"setup_file": "{project_home}/{project_identifier}/celery.py",
 	"environment:0": "development",
 	"broker:0": "amqp://guest:**@localhost:5672",
 	"environment:1": "production",
